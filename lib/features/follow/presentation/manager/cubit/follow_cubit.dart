@@ -1,0 +1,129 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:connecthub/features/follow/data/repos/follow_repo.dart';
+import 'package:connecthub/features/follow/data/repos/follow_repo_imp.dart';
+import 'package:connecthub/features/follow/presentation/manager/cubit/follow_state.dart';
+
+class FollowCubit extends Cubit<FollowState> {
+  final FollowRepo _followRepo;
+  final String targetUserId;
+
+  StreamSubscription<bool>? _followStatusSubscription;
+  StreamSubscription<DocumentSnapshot>? _userDocSubscription;
+
+  // Private cache — rebuilt into FollowLoaded whenever either stream fires.
+  bool _isFollowing = false;
+  bool _isActionLoading = false;
+  int _followersCount = 0;
+  int _followingCount = 0;
+
+  // Ensures FollowLoaded is only emitted after the user document has loaded
+  // so followers/following counts are accurate on first render.
+  bool _userDocInitialized = false;
+
+  FollowCubit({required this.targetUserId, FollowRepo? followRepo})
+    : _followRepo = followRepo ?? FollowRepoImp(),
+      super(FollowInitial());
+
+  String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
+
+  /// Starts real-time listeners for follow status and user follow counts.
+  /// No-ops silently when the current user is the target (can't follow yourself).
+  void loadFollowStatus() {
+    final currentUserId = _currentUserId;
+    if (currentUserId == null) {
+      emit(FollowError('Not logged in.'));
+      return;
+    }
+    if (currentUserId == targetUserId) return;
+
+    emit(FollowLoading());
+    _followStatusSubscription?.cancel();
+    _userDocSubscription?.cancel();
+    _userDocInitialized = false;
+
+    // Stream 1: real-time follow status
+    _followStatusSubscription = _followRepo
+        .isFollowingStream(currentUserId, targetUserId)
+        .listen((isFollowing) {
+          _isFollowing = isFollowing;
+          if (_userDocInitialized) _emitLoaded();
+        }, onError: (_) => emit(FollowError('Failed to load follow status.')));
+
+    // Stream 2: target user's document for live follower/following counts
+    _userDocSubscription = _followRepo.getUserStream(targetUserId).listen((
+      doc,
+    ) {
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        _followersCount = (data['followersCount'] as num?)?.toInt() ?? 0;
+        _followingCount = (data['followingCount'] as num?)?.toInt() ?? 0;
+      }
+      _userDocInitialized = true;
+      _emitLoaded();
+    }, onError: (_) => emit(FollowError('Failed to load user data.')));
+  }
+
+  /// Toggles follow/unfollow with optimistic locking via [isActionLoading].
+  /// Emits [FollowError] on failure then immediately recovers to [FollowLoaded].
+  ///
+  /// All post-await emits are guarded with [isClosed] to prevent
+  /// [StateError]s when the user navigates away while the operation is in
+  /// flight (BlocProvider disposes the cubit, but the Future keeps running).
+  Future<void> toggleFollow() async {
+    final currentUserId = _currentUserId;
+    if (currentUserId == null || currentUserId == targetUserId) return;
+    if (state is! FollowLoaded || _isActionLoading) return;
+
+    // Capture intent before the await so the error message is always correct
+    // even if the Firestore stream updates _isFollowing mid-flight.
+    final wasFollowing = _isFollowing;
+
+    _isActionLoading = true;
+    _emitLoaded();
+
+    try {
+      if (wasFollowing) {
+        await _followRepo.unfollowUser(currentUserId, targetUserId);
+      } else {
+        await _followRepo.followUser(currentUserId, targetUserId);
+      }
+      // On success the Firestore stream updates _isFollowing automatically.
+    } catch (_) {
+      // Guard: cubit may have been closed while the Future was in flight.
+      if (isClosed) return;
+      emit(
+        FollowError(
+          wasFollowing
+              ? 'Failed to unfollow. Please try again.'
+              : 'Failed to follow. Please try again.',
+        ),
+      );
+    }
+
+    // Guard again: the await above can complete after the view is popped.
+    if (isClosed) return;
+    _isActionLoading = false;
+    _emitLoaded();
+  }
+
+  void _emitLoaded() {
+    emit(
+      FollowLoaded(
+        isFollowing: _isFollowing,
+        isActionLoading: _isActionLoading,
+        followersCount: _followersCount,
+        followingCount: _followingCount,
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() {
+    _followStatusSubscription?.cancel();
+    _userDocSubscription?.cancel();
+    return super.close();
+  }
+}

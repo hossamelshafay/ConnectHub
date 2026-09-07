@@ -6,6 +6,7 @@ import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
 import 'package:connecthub/features/post/presentation/views/post_details_view.dart';
+import 'package:connecthub/features/profile/presentation/views/user_profile_view.dart';
 
 class PostCard extends StatelessWidget {
   final PostModel post;
@@ -31,9 +32,7 @@ class PostCard extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => PostDetailsView(postId: post.id),
-          ),
+          MaterialPageRoute(builder: (_) => PostDetailsView(postId: post.id)),
         );
       },
       child: Container(
@@ -87,31 +86,49 @@ class PostCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      UserAvatar(name: post.userName, size: 44),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              post.userName,
-                              style: AppTextStyles.body1.copyWith(
-                                fontWeight: FontWeight.w600,
+                  // Tapping the avatar / name navigates to that user's profile.
+                  // Own posts are excluded so the current user doesn't follow themselves.
+                  GestureDetector(
+                    onTap: isOwnPost
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserProfileView(
+                                userId: post.userId,
+                                userName: post.userName,
                               ),
                             ),
-                            Text(timeAgo, style: AppTextStyles.caption),
-                          ],
+                          ),
+                    child: Row(
+                      children: [
+                        UserAvatar(name: post.userName, size: 44),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                post.userName,
+                                style: AppTextStyles.body1.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(timeAgo, style: AppTextStyles.caption),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        if (!isOwnPost)
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: AppColors.textHint,
+                          ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 14),
-                  Text(
-                    post.title,
-                    style: AppTextStyles.headline3,
-                  ),
+                  Text(post.title, style: AppTextStyles.headline3),
                   const SizedBox(height: 8),
                   Text(
                     post.description,
@@ -141,8 +158,10 @@ class PostCard extends StatelessWidget {
                         errorWidget: (_, _, _) => Container(
                           height: 200,
                           color: AppColors.surfaceVariant,
-                          child: const Icon(Icons.broken_image_outlined,
-                              color: AppColors.textHint),
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            color: AppColors.textHint,
+                          ),
                         ),
                       ),
                     ),
@@ -153,9 +172,7 @@ class PostCard extends StatelessWidget {
                   Row(
                     children: [
                       _ActionButton(
-                        icon: isLiked
-                            ? Icons.favorite
-                            : Icons.favorite_border,
+                        icon: isLiked ? Icons.favorite : Icons.favorite_border,
                         label: '${post.likeCount}',
                         color: isLiked ? AppColors.accent : AppColors.textHint,
                         onTap: onLike,

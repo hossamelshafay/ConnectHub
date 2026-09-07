@@ -6,13 +6,24 @@ class ProfileCard extends StatelessWidget {
   final User user;
   final int postCount;
   final int totalLikes;
+  final int followersCount;
+  final int followingCount;
 
   const ProfileCard({
     super.key,
     required this.user,
     required this.postCount,
     required this.totalLikes,
+    this.followersCount = 0,
+    this.followingCount = 0,
   });
+
+  Widget get _divider => Container(
+    width: 1,
+    height: 30,
+    margin: const EdgeInsets.symmetric(horizontal: 24),
+    color: Colors.white.withValues(alpha: 0.3),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +54,9 @@ class ProfileCard extends StatelessWidget {
               shape: BoxShape.circle,
               color: Colors.white.withValues(alpha: 0.2),
               border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.5), width: 2),
+                color: Colors.white.withValues(alpha: 0.5),
+                width: 2,
+              ),
             ),
             child: Center(
               child: Text(
@@ -74,17 +87,23 @@ class ProfileCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // Row 1: Posts · Likes
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               StatItem(count: postCount.toString(), label: 'Posts'),
-              Container(
-                width: 1,
-                height: 30,
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
+              _divider,
               StatItem(count: totalLikes.toString(), label: 'Likes'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Row 2: Followers · Following
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              StatItem(count: followersCount.toString(), label: 'Followers'),
+              _divider,
+              StatItem(count: followingCount.toString(), label: 'Following'),
             ],
           ),
         ],

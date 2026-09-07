@@ -34,7 +34,8 @@ class ProfileView extends StatelessWidget {
                           ),
                           title: const Text('Sign Out'),
                           content: const Text(
-                              'Are you sure you want to sign out?'),
+                            'Are you sure you want to sign out?',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx),
@@ -46,12 +47,15 @@ class ProfileView extends StatelessWidget {
                                 context.read<AuthCubit>().signOut();
                                 Navigator.of(context).pushAndRemoveUntil(
                                   MaterialPageRoute(
-                                      builder: (_) => const LoginView()),
+                                    builder: (_) => const LoginView(),
+                                  ),
                                   (route) => false,
                                 );
                               },
-                              child: const Text('Sign Out',
-                                  style: TextStyle(color: AppColors.error)),
+                              child: const Text(
+                                'Sign Out',
+                                style: TextStyle(color: AppColors.error),
+                              ),
                             ),
                           ],
                         ),
@@ -64,8 +68,11 @@ class ProfileView extends StatelessWidget {
                         color: AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(Icons.logout_rounded,
-                          color: AppColors.textSecondary, size: 22),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: AppColors.textSecondary,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ],
@@ -76,7 +83,9 @@ class ProfileView extends StatelessWidget {
                 builder: (context, state) {
                   if (state is ProfileLoading) {
                     return const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     );
                   }
                   if (state is ProfileError) {
@@ -91,16 +100,24 @@ class ProfileView extends StatelessWidget {
                           user: state.user,
                           postCount: state.userPosts.length,
                           totalLikes: state.totalLikes,
+                          followersCount: state.followersCount,
+                          followingCount: state.followingCount,
                         ),
                         const SizedBox(height: 24),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: Row(
                             children: [
-                              Text('Your Posts', style: AppTextStyles.headline3),
+                              Text(
+                                'Your Posts',
+                                style: AppTextStyles.headline3,
+                              ),
                               const Spacer(),
-                              const Icon(Icons.grid_view_rounded,
-                                  color: AppColors.textHint, size: 22),
+                              const Icon(
+                                Icons.grid_view_rounded,
+                                color: AppColors.textHint,
+                                size: 22,
+                              ),
                             ],
                           ),
                         ),
@@ -111,20 +128,28 @@ class ProfileView extends StatelessWidget {
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.article_outlined,
-                                          size: 48,
-                                          color: AppColors.textHint
-                                              .withValues(alpha: 0.5)),
+                                      Icon(
+                                        Icons.article_outlined,
+                                        size: 48,
+                                        color: AppColors.textHint.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
                                       const SizedBox(height: 12),
-                                      Text('No posts yet',
-                                          style: AppTextStyles.body2
-                                              .copyWith(color: AppColors.textHint)),
+                                      Text(
+                                        'No posts yet',
+                                        style: AppTextStyles.body2.copyWith(
+                                          color: AppColors.textHint,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 )
                               : ListView.builder(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 4),
+                                    horizontal: 16,
+                                    vertical: 4,
+                                  ),
                                   itemCount: state.userPosts.length,
                                   itemBuilder: (context, index) {
                                     final post = state.userPosts[index];

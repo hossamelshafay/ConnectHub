@@ -11,11 +11,15 @@ class ProfileLoaded extends ProfileState {
   final User user;
   final List<PostModel> userPosts;
   final int totalLikes;
+  final int followersCount;
+  final int followingCount;
 
   ProfileLoaded({
     required this.user,
     required this.userPosts,
     required this.totalLikes,
+    this.followersCount = 0,
+    this.followingCount = 0,
   });
 }
 

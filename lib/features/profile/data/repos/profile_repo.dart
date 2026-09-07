@@ -6,5 +6,7 @@ abstract class ProfileRepo {
   User? get currentUser;
   Stream<List<PostModel>> getUserPostsStream(String userId);
   Stream<QuerySnapshot> getUserPostsRawStream(String userId);
-}
 
+  /// Real-time stream of the user's Firestore document (for follow counts).
+  Stream<DocumentSnapshot> getUserStream(String userId);
+}

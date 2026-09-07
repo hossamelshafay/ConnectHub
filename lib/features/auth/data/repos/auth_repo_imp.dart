@@ -29,16 +29,15 @@ class AuthRepoImp implements AuthRepo {
       'name': name.trim(),
       'email': email.trim(),
       'createdAt': FieldValue.serverTimestamp(),
+      'followersCount': 0,
+      'followingCount': 0,
     });
 
     return _auth.currentUser ?? credential.user!;
   }
 
   @override
-  Future<User> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<User> login({required String email, required String password}) async {
     await _auth.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,

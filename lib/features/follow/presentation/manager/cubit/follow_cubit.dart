@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/follow/data/repos/follow_repo.dart';
 import 'package:connecthub/features/follow/data/repos/follow_repo_imp.dart';
@@ -47,23 +48,28 @@ class FollowCubit extends Cubit<FollowState> {
     // Stream 1: real-time follow status
     _followStatusSubscription = _followRepo
         .isFollowingStream(currentUserId, targetUserId)
-        .listen((isFollowing) {
-          _isFollowing = isFollowing;
-          if (_userDocInitialized) _emitLoaded();
-        }, onError: (_) => emit(FollowError('Failed to load follow status.')));
+        .listen(
+          (isFollowing) {
+            _isFollowing = isFollowing;
+            if (_userDocInitialized) _emitLoaded();
+          },
+          onError: (e, st) =>
+              emit(FollowError(_formatError(e, st as StackTrace?))),
+        );
 
     // Stream 2: target user's document for live follower/following counts
-    _userDocSubscription = _followRepo.getUserStream(targetUserId).listen((
-      doc,
-    ) {
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        _followersCount = (data['followersCount'] as num?)?.toInt() ?? 0;
-        _followingCount = (data['followingCount'] as num?)?.toInt() ?? 0;
-      }
-      _userDocInitialized = true;
-      _emitLoaded();
-    }, onError: (_) => emit(FollowError('Failed to load user data.')));
+    _userDocSubscription = _followRepo.getUserStream(targetUserId).listen(
+      (doc) {
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          _followersCount = (data['followersCount'] as num?)?.toInt() ?? 0;
+          _followingCount = (data['followingCount'] as num?)?.toInt() ?? 0;
+        }
+        _userDocInitialized = true;
+        _emitLoaded();
+      },
+      onError: (e, st) => emit(FollowError(_formatError(e, st as StackTrace?))),
+    );
   }
 
   /// Toggles follow/unfollow with optimistic locking via [isActionLoading].
@@ -91,22 +97,37 @@ class FollowCubit extends Cubit<FollowState> {
         await _followRepo.followUser(currentUserId, targetUserId);
       }
       // On success the Firestore stream updates _isFollowing automatically.
-    } catch (_) {
+    } catch (e, st) {
       // Guard: cubit may have been closed while the Future was in flight.
       if (isClosed) return;
-      emit(
-        FollowError(
-          wasFollowing
-              ? 'Failed to unfollow. Please try again.'
-              : 'Failed to follow. Please try again.',
-        ),
-      );
+      emit(FollowError(_formatError(e, st)));
     }
 
     // Guard again: the await above can complete after the view is popped.
     if (isClosed) return;
     _isActionLoading = false;
     _emitLoaded();
+  }
+
+  /// Logs the full exception to the debug console AND returns a
+  /// human-readable string for the snackbar.
+  ///
+  /// Look for lines starting with [FollowCubit] in the flutter run output
+  /// to find the exact Firestore error code and message.
+  String _formatError(Object e, [StackTrace? st]) {
+    if (e is FirebaseException) {
+      final output =
+          '[FollowCubit] FirebaseException\n'
+          '  code   : ${e.code}\n'
+          '  message: ${e.message ?? "(no message)"}\n'
+          '  plugin : ${e.plugin}';
+      debugPrint(output);
+      return '[${e.code}] ${e.message ?? "Firebase error."}]';
+    }
+    // Non-Firebase exception — print full stack trace so nothing is hidden.
+    debugPrint('[FollowCubit] Unexpected error: $e');
+    if (st != null) debugPrint(st.toString());
+    return e.toString();
   }
 
   void _emitLoaded() {

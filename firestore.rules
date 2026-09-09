@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Keys that differ between the existing document and the incoming write.
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+
+    match /users/{userId} {
+
+      allow read: if isSignedIn();
+
+      // Signup: a user may only create their own document.
+      allow create: if isSignedIn() && isOwner(userId);
+
+      allow update: if isSignedIn() && (
+
+        // ① Profile owner updating their own fields (name, email, etc.)
+        //   Owners may NOT directly write counter fields; those are only
+        //   reachable through the validated follow/unfollow paths below.
+        (
+          isOwner(userId) &&
+          !changedKeys().hasAny(['followersCount', 'followingCount'])
+        )
+
+        ||
+
+        // ② Any signed-in user updating this user's followersCount.
+        //   • Only followersCount changes.
+        //   • Delta is exactly +1 (follow) or -1 (unfollow).
+        //   • Both sides use .get() so that the comparison is safe even when
+        //     the field does not yet exist on the document (existing users
+        //     created before this feature was deployed).
+        //   • getAfter() ties the counter to the real subcollection write in
+        //     the same transaction: you cannot increment without also creating
+        //     the followers/{uid} document in the same atomic commit.
+        (
+          changedKeys().hasOnly(['followersCount']) &&
+          (
+            (
+              request.resource.data.get('followersCount', 0) ==
+                resource.data.get('followersCount', 0) + 1 &&
+              getAfter(
+                /databases/$(database)/documents/users/$(userId)/followers/$(request.auth.uid)
+              ).exists
+            )
+            ||
+            (
+              request.resource.data.get('followersCount', 0) ==
+                resource.data.get('followersCount', 0) - 1 &&
+              !getAfter(
+                /databases/$(database)/documents/users/$(userId)/followers/$(request.auth.uid)
+              ).exists
+            )
+          )
+        )
+
+        ||
+
+        // ③ A user updating their own followingCount.
+        //   • Only followingCount changes (on their own document).
+        //   • Delta is exactly +1 or -1.
+        //   • Both sides use .get() for the same null-safety reason as ②.
+        (
+          isOwner(userId) &&
+          changedKeys().hasOnly(['followingCount']) &&
+          (
+            request.resource.data.get('followingCount', 0) ==
+              resource.data.get('followingCount', 0) + 1 ||
+            request.resource.data.get('followingCount', 0) ==
+              resource.data.get('followingCount', 0) - 1
+          )
+        )
+      );
+
+      // Nobody can delete a user document through the client SDK.
+      allow delete: if false;
+
+      // ── followers sub-collection ─────────────────────────────────────────────
+      match /followers/{followerId} {
+        allow read:  if isSignedIn();
+        // Only the follower themselves can create or remove their own entry.
+        allow write: if isSignedIn() && isOwner(followerId);
+      }
+
+      // ── following sub-collection ─────────────────────────────────────────────
+      match /following/{followingId} {
+        allow read:  if isSignedIn();
+        // Only the account owner can manage their own following list.
+        allow write: if isSignedIn() && isOwner(userId);
+      }
+    }
+
+    // ── Posts ─────────────────────────────────────────────────────────────────
+
+    match /posts/{postId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid;
+      // Social interactions (likes, likeCount, commentCount) are updates too.
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+
+      // ── comments sub-collection ──────────────────────────────────────────────
+      match /comments/{commentId} {
+        allow read:   if isSignedIn();
+        allow create: if isSignedIn() &&
+                         request.resource.data.userId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isSignedIn() && isOwner(resource.data.userId);
+      }
+    }
+  }
+}

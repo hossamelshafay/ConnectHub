@@ -19,6 +19,9 @@ class FollowCubit extends Cubit<FollowState> {
   bool _isActionLoading = false;
   int _followersCount = 0;
   int _followingCount = 0;
+  String? _profileImage;
+  String? _username;
+  String? _bio;
 
   // Ensures FollowLoaded is only emitted after the user document has loaded
   // so followers/following counts are accurate on first render.
@@ -64,6 +67,9 @@ class FollowCubit extends Cubit<FollowState> {
           final data = doc.data() as Map<String, dynamic>;
           _followersCount = (data['followersCount'] as num?)?.toInt() ?? 0;
           _followingCount = (data['followingCount'] as num?)?.toInt() ?? 0;
+          _profileImage = data['profileImage'] as String?;
+          _username = data['username'] as String?;
+          _bio = data['bio'] as String?;
         }
         _userDocInitialized = true;
         _emitLoaded();
@@ -137,6 +143,9 @@ class FollowCubit extends Cubit<FollowState> {
         isActionLoading: _isActionLoading,
         followersCount: _followersCount,
         followingCount: _followingCount,
+        profileImage: _profileImage,
+        username: _username,
+        bio: _bio,
       ),
     );
   }

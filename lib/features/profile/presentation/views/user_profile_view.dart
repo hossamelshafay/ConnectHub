@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_cubit.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_state.dart';
 import 'package:connecthub/features/follow/presentation/widgets/follow_button.dart';
 import 'package:connecthub/features/home/presentation/manager/cubit/posts_cubit.dart';
 import 'package:connecthub/features/home/presentation/manager/cubit/posts_state.dart';
+import 'package:connecthub/features/profile/presentation/manager/cubit/profile_cubit.dart';
+import 'package:connecthub/features/profile/presentation/views/followers_view.dart';
+import 'package:connecthub/features/profile/presentation/views/following_view.dart';
 import 'package:connecthub/features/profile/presentation/widgets/profile_card.dart';
 import 'package:connecthub/features/profile/presentation/widgets/user_post_tile.dart';
 
@@ -58,7 +62,7 @@ class UserProfileView extends StatelessWidget {
           body: SafeArea(
             child: Column(
               children: [
-                _UserProfileHeader(userName: userName),
+                _UserProfileHeader(userName: userName, userId: userId),
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -151,103 +155,234 @@ class UserProfileView extends StatelessWidget {
 }
 
 /// Gradient header card for a public user profile.
-/// Mirrors [ProfileCard]'s visual style without requiring a Firebase [User] object.
+/// Mirrors [ProfileCard]'s visual style, displays Posts count, Followers, and Following.
 class _UserProfileHeader extends StatelessWidget {
   final String userName;
+  final String userId;
 
-  const _UserProfileHeader({required this.userName});
+  const _UserProfileHeader({
+    required this.userName,
+    required this.userId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.accent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Avatar
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.2),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.5),
-                width: 2,
-              ),
+    return BlocBuilder<FollowCubit, FollowState>(
+      builder: (context, followState) {
+        final followersCount =
+            followState is FollowLoaded ? followState.followersCount : 0;
+        final followingCount =
+            followState is FollowLoaded ? followState.followingCount : 0;
+        final profileImage =
+            followState is FollowLoaded ? followState.profileImage : null;
+        final customUsername =
+            followState is FollowLoaded ? followState.username : null;
+        final bio = followState is FollowLoaded ? followState.bio : null;
+
+        final usernameStr = customUsername?.trim().isNotEmpty == true
+            ? (customUsername!.startsWith('@')
+                ? customUsername
+                : '@$customUsername')
+            : null;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.accent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Center(
-              child: Text(
-                userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Avatar
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    width: 2.5,
+                  ),
+                ),
+                child: ClipOval(
+                  child: (profileImage != null && profileImage.isNotEmpty)
+                      ? CachedNetworkImage(
+                          imageUrl: profileImage,
+                          width: 76,
+                          height: 76,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, _, _) => _buildFallback(),
+                        )
+                      : _buildFallback(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Name
+              Text(
+                userName,
                 style: const TextStyle(
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            userName,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Followers / Following counts (live via FollowCubit)
-          BlocBuilder<FollowCubit, FollowState>(
-            builder: (context, state) {
-              final followersCount = state is FollowLoaded
-                  ? state.followersCount
-                  : 0;
-              final followingCount = state is FollowLoaded
-                  ? state.followingCount
-                  : 0;
 
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  StatItem(
-                    count: followersCount.toString(),
-                    label: 'Followers',
+              // Username (@username)
+              if (usernameStr != null) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  Container(
-                    width: 1,
-                    height: 30,
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    color: Colors.white.withValues(alpha: 0.3),
+                  child: Text(
+                    usernameStr,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
                   ),
-                  StatItem(
-                    count: followingCount.toString(),
-                    label: 'Following',
+                ),
+              ],
+
+              // Bio
+              if (bio != null && bio.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  bio.trim(),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.85),
                   ),
-                ],
-              );
-            },
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // Stats row: Posts · Followers · Following
+              BlocBuilder<PostsCubit, PostsState>(
+                builder: (context, postsState) {
+                  final postCount =
+                      postsState is PostsLoaded ? postsState.posts.length : 0;
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      StatItem(
+                        count: postCount.toString(),
+                        label: 'Posts',
+                      ),
+                      Container(
+                        width: 1,
+                        height: 30,
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider(
+                                create: (_) => ProfileCubit(),
+                                child: FollowersView(
+                                  userId: userId,
+                                  userName: userName,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: StatItem(
+                          count: followersCount.toString(),
+                          label: 'Followers',
+                          isClickable: true,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 30,
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider(
+                                create: (_) => ProfileCubit(),
+                                child: FollowingView(
+                                  userId: userId,
+                                  userName: userName,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: StatItem(
+                          count: followingCount.toString(),
+                          label: 'Following',
+                          isClickable: true,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Follow / Unfollow button
+              const FollowButton(),
+            ],
           ),
-          const SizedBox(height: 16),
-          // Follow / Unfollow button (hidden for own profile via FollowInitial)
-          const FollowButton(),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFallback() {
+    return Center(
+      child: Text(
+        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+        style: const TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
       ),
     );
   }
 }
+

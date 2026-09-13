@@ -62,21 +62,35 @@ class FollowRepoImp implements FollowRepo {
         .collection('following')
         .doc(targetUserId);
 
-    await _firestore.runTransaction((transaction) async {
-      final followerSnap = await transaction.get(followerRef);
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final followerSnap = await transaction.get(followerRef);
 
-      // Idempotency guard: not following → do nothing, counter unchanged.
-      if (!followerSnap.exists) return;
+        // Idempotency guard: not following → do nothing, counter unchanged.
+        if (!followerSnap.exists) return;
 
-      transaction.delete(followerRef);
-      transaction.delete(followingRef);
-      transaction.update(_users.doc(targetUserId), {
-        'followersCount': FieldValue.increment(-1),
+        transaction.delete(followerRef);
+        transaction.delete(followingRef);
+        transaction.update(_users.doc(targetUserId), {
+          'followersCount': FieldValue.increment(-1),
+        });
+        transaction.update(_users.doc(currentUserId), {
+          'followingCount': FieldValue.increment(-1),
+        });
       });
-      transaction.update(_users.doc(currentUserId), {
-        'followingCount': FieldValue.increment(-1),
-      });
-    });
+    } catch (_) {
+      final snap = await followerRef.get();
+      if (snap.exists) {
+        await followerRef.delete();
+        await followingRef.delete();
+        await _users.doc(targetUserId).update({
+          'followersCount': FieldValue.increment(-1),
+        });
+        await _users.doc(currentUserId).update({
+          'followingCount': FieldValue.increment(-1),
+        });
+      }
+    }
   }
 
   @override

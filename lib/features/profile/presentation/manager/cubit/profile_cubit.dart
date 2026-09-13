@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -97,6 +98,7 @@ class ProfileCubit extends Cubit<ProfileState> {
     required String name,
     required String username,
     required String bio,
+    Uint8List? imageBytes,
     File? imageFile,
   }) async {
     final user = _user ?? _profileRepo.currentUser;
@@ -105,7 +107,12 @@ class ProfileCubit extends Cubit<ProfileState> {
     emit(ProfileUpdating());
     try {
       String? imageUrl = _userData?['profileImage'] as String? ?? user.photoURL;
-      if (imageFile != null) {
+      if (imageBytes != null) {
+        final uploaded = await _profileRepo.uploadProfileBytes(imageBytes);
+        if (uploaded != null) {
+          imageUrl = uploaded;
+        }
+      } else if (imageFile != null) {
         final uploaded = await _profileRepo.uploadProfileImage(imageFile);
         if (uploaded != null) {
           imageUrl = uploaded;

@@ -9,12 +9,18 @@ class FollowLoaded extends FollowState {
   final bool isActionLoading;
   final int followersCount;
   final int followingCount;
+  final String? profileImage;
+  final String? username;
+  final String? bio;
 
   FollowLoaded({
     required this.isFollowing,
     this.isActionLoading = false,
     required this.followersCount,
     required this.followingCount,
+    this.profileImage,
+    this.username,
+    this.bio,
   });
 }
 

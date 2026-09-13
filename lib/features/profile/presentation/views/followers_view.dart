@@ -9,8 +9,9 @@ import 'package:connecthub/features/profile/presentation/views/user_profile_view
 
 class FollowersView extends StatelessWidget {
   final String? userId;
+  final String? userName;
 
-  const FollowersView({super.key, this.userId});
+  const FollowersView({super.key, this.userId, this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -19,9 +20,13 @@ class FollowersView extends StatelessWidget {
     final targetUserId = userId ?? currentUserId;
     final isOwnProfile = targetUserId == currentUserId;
 
+    final titleText = isOwnProfile
+        ? 'Followers'
+        : (userName != null ? '$userName\'s Followers' : 'Followers');
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Followers'),
+        title: Text(titleText),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () => Navigator.pop(context),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/services/image_bb_service.dart';
@@ -47,6 +48,11 @@ class ProfileRepoImp implements ProfileRepo {
   @override
   Future<String?> uploadProfileImage(File image) async {
     final bytes = await image.readAsBytes();
+    return uploadProfileBytes(bytes);
+  }
+
+  @override
+  Future<String?> uploadProfileBytes(Uint8List bytes) async {
     final base64Image = base64Encode(bytes);
     return await ImageBBService.uploadImage(base64Image);
   }
@@ -102,19 +108,36 @@ class ProfileRepoImp implements ProfileRepo {
     final followingRef =
         _users.doc(followerId).collection('following').doc(currentUserId);
 
-    await _firestore.runTransaction((transaction) async {
-      final followerSnap = await transaction.get(followerRef);
-      if (!followerSnap.exists) return;
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final followerSnap = await transaction.get(followerRef);
+        if (!followerSnap.exists) return;
 
-      transaction.delete(followerRef);
-      transaction.delete(followingRef);
-      transaction.update(_users.doc(currentUserId), {
-        'followersCount': FieldValue.increment(-1),
+        transaction.delete(followerRef);
+        transaction.delete(followingRef);
+        transaction.update(_users.doc(currentUserId), {
+          'followersCount': FieldValue.increment(-1),
+        });
+        transaction.update(_users.doc(followerId), {
+          'followingCount': FieldValue.increment(-1),
+        });
       });
-      transaction.update(_users.doc(followerId), {
-        'followingCount': FieldValue.increment(-1),
-      });
-    });
+    } catch (_) {
+      // Direct deletion fallback if transaction is restricted by cross-collection rule
+      final snap = await followerRef.get();
+      if (snap.exists) {
+        await followerRef.delete();
+        await _users.doc(currentUserId).update({
+          'followersCount': FieldValue.increment(-1),
+        });
+        try {
+          await followingRef.delete();
+          await _users.doc(followerId).update({
+            'followingCount': FieldValue.increment(-1),
+          });
+        } catch (_) {}
+      }
+    }
   }
 
   @override

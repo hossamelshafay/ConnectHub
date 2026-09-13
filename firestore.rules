@@ -38,44 +38,21 @@ service cloud.firestore {
 
         ||
 
-        // ② Any signed-in user updating this user's followersCount.
-        //   • Only followersCount changes.
-        //   • Delta is exactly +1 (follow) or -1 (unfollow).
-        //   • Both sides use .get() so that the comparison is safe even when
-        //     the field does not yet exist on the document (existing users
-        //     created before this feature was deployed).
-        //   • getAfter() ties the counter to the real subcollection write in
-        //     the same transaction: you cannot increment without also creating
-        //     the followers/{uid} document in the same atomic commit.
+        // ② Updating followersCount (+1 on follow, -1 on unfollow or removal).
         (
           changedKeys().hasOnly(['followersCount']) &&
           (
-            (
-              request.resource.data.get('followersCount', 0) ==
-                resource.data.get('followersCount', 0) + 1 &&
-              getAfter(
-                /databases/$(database)/documents/users/$(userId)/followers/$(request.auth.uid)
-              ).exists
-            )
-            ||
-            (
-              request.resource.data.get('followersCount', 0) ==
-                resource.data.get('followersCount', 0) - 1 &&
-              !getAfter(
-                /databases/$(database)/documents/users/$(userId)/followers/$(request.auth.uid)
-              ).exists
-            )
+            request.resource.data.get('followersCount', 0) ==
+              resource.data.get('followersCount', 0) + 1 ||
+            request.resource.data.get('followersCount', 0) ==
+              resource.data.get('followersCount', 0) - 1
           )
         )
 
         ||
 
-        // ③ A user updating their own followingCount.
-        //   • Only followingCount changes (on their own document).
-        //   • Delta is exactly +1 or -1.
-        //   • Both sides use .get() for the same null-safety reason as ②.
+        // ③ Updating followingCount (+1 on follow, -1 on unfollow or removal).
         (
-          isOwner(userId) &&
           changedKeys().hasOnly(['followingCount']) &&
           (
             request.resource.data.get('followingCount', 0) ==
@@ -92,15 +69,15 @@ service cloud.firestore {
       // ── followers sub-collection ─────────────────────────────────────────────
       match /followers/{followerId} {
         allow read:  if isSignedIn();
-        // Only the follower themselves can create or remove their own entry.
-        allow write: if isSignedIn() && isOwner(followerId);
+        // The follower can add/remove themselves, OR the account owner can remove them.
+        allow write: if isSignedIn() && (isOwner(followerId) || isOwner(userId));
       }
 
       // ── following sub-collection ─────────────────────────────────────────────
       match /following/{followingId} {
         allow read:  if isSignedIn();
-        // Only the account owner can manage their own following list.
-        allow write: if isSignedIn() && isOwner(userId);
+        // The account owner can manage their following list, OR the followed user can remove their entry when removing a follower.
+        allow write: if isSignedIn() && (isOwner(userId) || isOwner(followingId));
       }
     }
 

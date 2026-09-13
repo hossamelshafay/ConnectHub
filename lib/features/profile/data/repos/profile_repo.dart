@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
@@ -24,6 +25,9 @@ abstract class ProfileRepo {
 
   /// Uploads a new profile image and returns the public URL.
   Future<String?> uploadProfileImage(File image);
+
+  /// Uploads image bytes directly (supports Flutter Web and all platforms).
+  Future<String?> uploadProfileBytes(Uint8List bytes);
 
   /// Real-time stream of the user's followers subcollection.
   Stream<QuerySnapshot> getFollowersStream(String userId);

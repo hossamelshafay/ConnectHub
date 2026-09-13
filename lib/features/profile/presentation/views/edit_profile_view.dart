@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -21,7 +21,7 @@ class _EditProfileViewState extends State<EditProfileView> {
   late final TextEditingController _usernameController;
   late final TextEditingController _bioController;
 
-  File? _selectedImage;
+  Uint8List? _selectedImageBytes;
   final ImagePicker _picker = ImagePicker();
   bool _isSaving = false;
 
@@ -63,8 +63,9 @@ class _EditProfileViewState extends State<EditProfileView> {
         imageQuality: 85,
       );
       if (picked != null) {
+        final bytes = await picked.readAsBytes();
         setState(() {
-          _selectedImage = File(picked.path);
+          _selectedImageBytes = bytes;
         });
       }
     } catch (e) {
@@ -138,7 +139,7 @@ class _EditProfileViewState extends State<EditProfileView> {
                     _pickImage(ImageSource.camera);
                   },
                 ),
-                if (_selectedImage != null)
+                if (_selectedImageBytes != null)
                   ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(10),
@@ -156,7 +157,7 @@ class _EditProfileViewState extends State<EditProfileView> {
                     onTap: () {
                       Navigator.pop(ctx);
                       setState(() {
-                        _selectedImage = null;
+                        _selectedImageBytes = null;
                       });
                     },
                   ),
@@ -176,7 +177,7 @@ class _EditProfileViewState extends State<EditProfileView> {
           name: _nameController.text.trim(),
           username: _usernameController.text.trim(),
           bio: _bioController.text.trim(),
-          imageFile: _selectedImage,
+          imageBytes: _selectedImageBytes,
         );
 
     if (!mounted) return;
@@ -381,9 +382,9 @@ class _EditProfileViewState extends State<EditProfileView> {
   }
 
   Widget _buildAvatarPreview() {
-    if (_selectedImage != null) {
-      return Image.file(
-        _selectedImage!,
+    if (_selectedImageBytes != null) {
+      return Image.memory(
+        _selectedImageBytes!,
         fit: BoxFit.cover,
         width: 110,
         height: 110,

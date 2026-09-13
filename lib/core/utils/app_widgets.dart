@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 
 /// Gradient primary button with loading state.
@@ -105,7 +106,7 @@ class CustomTextField extends StatelessWidget {
   }
 }
 
-/// Avatar widget with gradient border.
+/// Avatar widget with gradient border and optional image.
 class UserAvatar extends StatelessWidget {
   final String name;
   final double size;
@@ -121,12 +122,51 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          placeholder: (_, _) => Container(
+            width: size,
+            height: size,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.accent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Center(
+              child: SizedBox(
+                width: size * 0.4,
+                height: size * 0.4,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+          ),
+          errorWidget: (_, _, _) => _buildFallback(initial),
+        ),
+      );
+    }
+
+    return _buildFallback(initial);
+  }
+
+  Widget _buildFallback(String initial) {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [AppColors.primary, AppColors.accent],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

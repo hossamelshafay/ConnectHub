@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
@@ -13,10 +15,13 @@ class ProfileCubit extends Cubit<ProfileState> {
 
   // Private cache — both streams contribute to the same ProfileLoaded state.
   User? _user;
+  Map<String, dynamic>? _userData;
   List<PostModel> _userPosts = [];
   int _totalLikes = 0;
   int _followersCount = 0;
   int _followingCount = 0;
+
+  ProfileRepo get repo => _profileRepo;
 
   ProfileCubit({ProfileRepo? profileRepo})
     : _profileRepo = profileRepo ?? ProfileRepoImp(),
@@ -56,18 +61,20 @@ class ProfileCubit extends Cubit<ProfileState> {
           },
         );
 
-    // Stream 2: user document for live followers/following counts
+    // Stream 2: user document for live followers/following counts and profile data
     _userDocSubscription = _profileRepo.getUserStream(user.uid).listen(
       (doc) {
-        if (doc.exists) {
+        if (doc.exists && doc.data() != null) {
           final data = doc.data() as Map<String, dynamic>;
+          _userData = data;
           _followersCount = (data['followersCount'] as num?)?.toInt() ?? 0;
           _followingCount = (data['followingCount'] as num?)?.toInt() ?? 0;
         }
-        // Only update if posts have already loaded to avoid a blank flash
-        if (state is ProfileLoaded) _emitLoaded();
+        if (state is ProfileLoaded || state is ProfileLoading) {
+          _emitLoaded();
+        }
       },
-      onError: (_) {}, // Silently ignore — follow counts are non-critical
+      onError: (_) {}, // Silently ignore — non-critical stream error
     );
   }
 
@@ -76,12 +83,99 @@ class ProfileCubit extends Cubit<ProfileState> {
     emit(
       ProfileLoaded(
         user: _user!,
+        userData: _userData,
         userPosts: _userPosts,
         totalLikes: _totalLikes,
         followersCount: _followersCount,
         followingCount: _followingCount,
       ),
     );
+  }
+
+  /// Updates profile image, display name, username, and bio.
+  Future<bool> updateProfile({
+    required String name,
+    required String username,
+    required String bio,
+    File? imageFile,
+  }) async {
+    final user = _user ?? _profileRepo.currentUser;
+    if (user == null) return false;
+
+    emit(ProfileUpdating());
+    try {
+      String? imageUrl = _userData?['profileImage'] as String? ?? user.photoURL;
+      if (imageFile != null) {
+        final uploaded = await _profileRepo.uploadProfileImage(imageFile);
+        if (uploaded != null) {
+          imageUrl = uploaded;
+        }
+      }
+
+      await _profileRepo.updateProfile(
+        name: name,
+        username: username,
+        bio: bio,
+        profileImageUrl: imageUrl,
+      );
+
+      _user = _profileRepo.currentUser;
+      _userData = {
+        ...?_userData,
+        'name': name.trim(),
+        'username': username.trim().replaceAll('@', ''),
+        'bio': bio.trim(),
+        'profileImage': ?imageUrl,
+      };
+
+      emit(ProfileUpdateSuccess());
+      _emitLoaded();
+      return true;
+    } catch (e) {
+      emit(ProfileUpdateError(e.toString().replaceAll('Exception: ', '')));
+      _emitLoaded();
+      return false;
+    }
+  }
+
+  /// Removes a follower using the existing Firestore transaction.
+  Future<void> removeFollower(String followerId) async {
+    final user = _profileRepo.currentUser;
+    if (user == null) return;
+    await _profileRepo.removeFollower(
+      currentUserId: user.uid,
+      followerId: followerId,
+    );
+  }
+
+  /// Unfollows a target user using the existing Firestore transaction.
+  Future<void> unfollowUser(String targetUserId) async {
+    final user = _profileRepo.currentUser;
+    if (user == null) return;
+    await _profileRepo.unfollowUser(
+      currentUserId: user.uid,
+      targetUserId: targetUserId,
+    );
+  }
+
+  /// Stream of followers for a given user.
+  Stream<QuerySnapshot> getFollowersStream(String userId) {
+    return _profileRepo.getFollowersStream(userId);
+  }
+
+  /// Stream of following for a given user.
+  Stream<QuerySnapshot> getFollowingStream(String userId) {
+    return _profileRepo.getFollowingStream(userId);
+  }
+
+  /// Fetch user document snapshot.
+  Future<DocumentSnapshot> getUserDoc(String userId) {
+    return _profileRepo.getUserDoc(userId);
+  }
+
+  /// Stream of posts liked by [userId].
+  Stream<List<PostModel>> getLikedPostsStream(String userId) {
+    return _profileRepo.getLikedPostsStream(userId);
   }
 
   @override

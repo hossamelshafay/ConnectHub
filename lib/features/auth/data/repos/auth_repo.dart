@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 
 abstract class AuthRepo {
   User? get currentUser;
@@ -18,4 +19,12 @@ abstract class AuthRepo {
     required void Function() onUnauthenticated,
   });
   String getErrorMessage(String code);
+
+  // Multi-Account Secure Storage Methods
+  Future<List<SavedAccountModel>> getSavedAccounts();
+  Future<void> saveOrUpdateAccount(SavedAccountModel account);
+  Future<void> removeSavedAccount(String uid);
+  Future<SavedAccountModel?> getActiveAccount();
+  Future<SavedAccountModel?> syncCurrentAccountToSaved();
 }
+

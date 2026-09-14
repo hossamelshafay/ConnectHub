@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 
 abstract class AuthState {}
 
@@ -21,4 +22,14 @@ class AuthError extends AuthState {
 class AuthSignedUp extends AuthState {}
 
 class AuthPasswordResetSent extends AuthState {}
+
+class AuthSavedAccountsLoaded extends AuthState {
+  final List<SavedAccountModel> savedAccounts;
+  final SavedAccountModel? activeAccount;
+  AuthSavedAccountsLoaded({
+    required this.savedAccounts,
+    this.activeAccount,
+  });
+}
+
 

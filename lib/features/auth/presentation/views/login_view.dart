@@ -9,7 +9,14 @@ import 'package:connecthub/features/auth/presentation/views/forgot_password_view
 import 'package:connecthub/features/home/presentation/views/home_view.dart';
 
 class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+  final bool isAddingAccount;
+  final String? initialEmail;
+
+  const LoginView({
+    super.key,
+    this.isAddingAccount = false,
+    this.initialEmail,
+  });
 
   @override
   State<LoginView> createState() => _LoginViewState();
@@ -28,6 +35,9 @@ class _LoginViewState extends State<LoginView>
   @override
   void initState() {
     super.initState();
+    if (widget.initialEmail != null && widget.initialEmail!.isNotEmpty) {
+      _emailController.text = widget.initialEmail!;
+    }
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -84,7 +94,29 @@ class _LoginViewState extends State<LoginView>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 60),
+                      if (widget.isAddingAccount) ...[
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: AppColors.textPrimary,
+                                size: 22,
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ] else
+                        const SizedBox(height: 60),
+
                       Center(
                         child: Container(
                           width: 80,
@@ -114,13 +146,20 @@ class _LoginViewState extends State<LoginView>
                       ),
                       const SizedBox(height: 32),
                       Center(
-                        child: Text('Welcome Back', style: AppTextStyles.headline1),
+                        child: Text(
+                          widget.isAddingAccount ? 'Add Account' : 'Welcome Back',
+                          style: AppTextStyles.headline1,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Center(
                         child: Text(
-                          'Sign in to continue to ConnectHub',
+                          widget.initialEmail != null &&
+                                  widget.initialEmail!.isNotEmpty
+                              ? 'Enter password for ${widget.initialEmail}'
+                              : 'Sign in to continue to ConnectHub',
                           style: AppTextStyles.body2,
+                          textAlign: TextAlign.center,
                         ),
                       ),
                       const SizedBox(height: 40),
@@ -236,3 +275,4 @@ class _LoginViewState extends State<LoginView>
     );
   }
 }
+

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo_imp.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
@@ -64,6 +65,26 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  Future<void> loadSavedAccounts() async {
+    final accounts = await _authRepo.getSavedAccounts();
+    final active = await _authRepo.getActiveAccount();
+    emit(AuthSavedAccountsLoaded(
+      savedAccounts: accounts,
+      activeAccount: active,
+    ));
+  }
+
+  Future<void> removeSavedAccount(String uid) async {
+    await _authRepo.removeSavedAccount(uid);
+    await loadSavedAccounts();
+  }
+
+  Future<List<SavedAccountModel>> getSavedAccounts() =>
+      _authRepo.getSavedAccounts();
+
+  Future<SavedAccountModel?> getActiveAccount() =>
+      _authRepo.getActiveAccount();
+
   Future<void> forgotPassword(String email) async {
     emit(AuthLoading());
     try {
@@ -84,3 +105,4 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthUnauthenticated());
   }
 }
+

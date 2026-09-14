@@ -1,10 +1,16 @@
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo.dart';
 
 class AuthRepoImp implements AuthRepo {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  static const String _savedAccountsKey = 'connecthub_saved_accounts';
 
   @override
   User? get currentUser => _auth.currentUser;
@@ -33,7 +39,9 @@ class AuthRepoImp implements AuthRepo {
       'followingCount': 0,
     });
 
-    return _auth.currentUser ?? credential.user!;
+    final user = _auth.currentUser ?? credential.user!;
+    await syncCurrentAccountToSaved();
+    return user;
   }
 
   @override
@@ -42,7 +50,9 @@ class AuthRepoImp implements AuthRepo {
       email: email.trim(),
       password: password,
     );
-    return _auth.currentUser!;
+    final user = _auth.currentUser!;
+    await syncCurrentAccountToSaved();
+    return user;
   }
 
   @override
@@ -62,10 +72,119 @@ class AuthRepoImp implements AuthRepo {
   }) {
     final user = _auth.currentUser;
     if (user != null) {
+      syncCurrentAccountToSaved();
       onAuthenticated(user);
     } else {
       onUnauthenticated();
     }
+  }
+
+  @override
+  Future<List<SavedAccountModel>> getSavedAccounts() async {
+    try {
+      final rawJson = await _storage.read(key: _savedAccountsKey);
+      if (rawJson == null || rawJson.trim().isEmpty) {
+        return [];
+      }
+      final List<dynamic> jsonList = jsonDecode(rawJson);
+      final accounts = jsonList
+          .map((item) => SavedAccountModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+
+      // Sort with most recently used account first
+      accounts.sort((a, b) => b.lastUsedAt.compareTo(a.lastUsedAt));
+      return accounts;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Future<void> saveOrUpdateAccount(SavedAccountModel account) async {
+    try {
+      final accounts = await getSavedAccounts();
+      final index = accounts.indexWhere((a) => a.uid == account.uid);
+
+      final updatedAccount = account.copyWith(lastUsedAt: DateTime.now());
+
+      if (index >= 0) {
+        // Deduplicate: Update existing entry
+        accounts[index] = updatedAccount;
+      } else {
+        // Add new entry
+        accounts.add(updatedAccount);
+      }
+
+      // Re-sort with most recent first
+      accounts.sort((a, b) => b.lastUsedAt.compareTo(a.lastUsedAt));
+
+      final jsonString = jsonEncode(accounts.map((a) => a.toJson()).toList());
+      await _storage.write(key: _savedAccountsKey, value: jsonString);
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> removeSavedAccount(String uid) async {
+    try {
+      final accounts = await getSavedAccounts();
+      accounts.removeWhere((a) => a.uid == uid);
+      final jsonString = jsonEncode(accounts.map((a) => a.toJson()).toList());
+      await _storage.write(key: _savedAccountsKey, value: jsonString);
+    } catch (_) {}
+  }
+
+  @override
+  Future<SavedAccountModel?> getActiveAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    final accounts = await getSavedAccounts();
+    try {
+      return accounts.firstWhere((a) => a.uid == user.uid);
+    } catch (_) {
+      return syncCurrentAccountToSaved();
+    }
+  }
+
+  @override
+  Future<SavedAccountModel?> syncCurrentAccountToSaved() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    String displayName = user.displayName ?? '';
+    String username = '';
+    String profileImage = user.photoURL ?? '';
+    String email = user.email ?? '';
+
+    try {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        if ((data['name'] as String?)?.isNotEmpty == true) {
+          displayName = data['name'] as String;
+        }
+        if ((data['username'] as String?)?.isNotEmpty == true) {
+          username = data['username'] as String;
+        }
+        if ((data['profileImage'] as String?)?.isNotEmpty == true) {
+          profileImage = data['profileImage'] as String;
+        }
+        if ((data['email'] as String?)?.isNotEmpty == true) {
+          email = data['email'] as String;
+        }
+      }
+    } catch (_) {}
+
+    final account = SavedAccountModel(
+      uid: user.uid,
+      email: email,
+      displayName: displayName.isNotEmpty ? displayName : (user.email ?? 'User'),
+      username: username,
+      profileImage: profileImage,
+      lastUsedAt: DateTime.now(),
+    );
+
+    await saveOrUpdateAccount(account);
+    return account;
   }
 
   @override
@@ -100,3 +219,4 @@ class AuthRepoImp implements AuthRepo {
     }
   }
 }
+

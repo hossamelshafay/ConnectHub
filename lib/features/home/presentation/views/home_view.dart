@@ -11,7 +11,10 @@ import 'package:connecthub/features/chatbot/presentation/views/chatbot_view.dart
 import 'package:connecthub/features/notification/presentation/manager/cubit/notification_cubit.dart';
 import 'package:connecthub/features/notification/presentation/manager/cubit/notification_state.dart';
 import 'package:connecthub/features/notification/presentation/views/notification_view.dart';
+import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
+import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
 import 'package:connecthub/features/profile/presentation/views/profile_view.dart';
+import 'package:connecthub/features/search/presentation/views/search_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -37,19 +40,27 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     final pages = [
       const _FeedPage(),
+      const SearchView(),
       const NotificationView(),
       const ChatbotView(),
       const ProfileView(),
     ];
 
-    return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: KeyedSubtree(
-          key: ValueKey(_currentIndex),
-          child: pages[_currentIndex],
+    return BlocListener<AuthCubit, AuthState>(
+      listener: (context, state) {
+        if (state is AuthAuthenticated) {
+          context.read<PostsCubit>().loadPosts();
+          context.read<NotificationCubit>().listenToNotifications(state.user.uid);
+        }
+      },
+      child: Scaffold(
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: KeyedSubtree(
+            key: ValueKey(_currentIndex),
+            child: pages[_currentIndex],
+          ),
         ),
-      ),
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
               onPressed: () {
@@ -86,28 +97,35 @@ class _HomeViewState extends State<HomeView> {
                   isSelected: _currentIndex == 0,
                   onTap: () => setState(() => _currentIndex = 0),
                 ),
-                _NotificationNavItem(
+                _NavItem(
+                  icon: Icons.search_rounded,
+                  label: 'Search',
                   isSelected: _currentIndex == 1,
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
-                _NavItem(
-                  icon: Icons.smart_toy_rounded,
-                  label: 'AI Chat',
+                _NotificationNavItem(
                   isSelected: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
                 ),
                 _NavItem(
-                  icon: Icons.person_rounded,
-                  label: 'Profile',
+                  icon: Icons.smart_toy_rounded,
+                  label: 'AI Chat',
                   isSelected: _currentIndex == 3,
                   onTap: () => setState(() => _currentIndex = 3),
+                ),
+                _NavItem(
+                  icon: Icons.person_rounded,
+                  label: 'Profile',
+                  isSelected: _currentIndex == 4,
+                  onTap: () => setState(() => _currentIndex = 4),
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

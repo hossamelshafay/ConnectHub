@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'package:connecthub/features/auth/presentation/views/login_view.dart';
+import 'package:connecthub/features/auth/presentation/widgets/manage_accounts_bottom_sheet.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_cubit.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_state.dart';
 import 'package:connecthub/features/profile/presentation/views/edit_profile_view.dart';
@@ -41,6 +42,36 @@ class _ProfileViewBody extends StatelessWidget {
                 children: [
                   Text('Profile', style: AppTextStyles.headline2),
                   const Spacer(),
+                  GestureDetector(
+                    onTap: () => ManageAccountsBottomSheet.show(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.manage_accounts_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Accounts',
+                            style: AppTextStyles.body2.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => _showSignOutDialog(context),
                     child: Container(

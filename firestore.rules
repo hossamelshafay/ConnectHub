@@ -79,6 +79,21 @@ service cloud.firestore {
         // The account owner can manage their following list, OR the followed user can remove their entry when removing a follower.
         allow write: if isSignedIn() && (isOwner(userId) || isOwner(followingId));
       }
+
+      // ── notifications sub-collection ─────────────────────────────────────────
+      match /notifications/{notificationId} {
+        // Only the owner may read their own notifications.
+        allow read: if isSignedIn() && isOwner(userId);
+
+        // Any signed-in user may create a notification for another user
+        // (triggered by likes, comments, follows).
+        // Self-notification is prevented in application code.
+        allow create: if isSignedIn();
+
+        // Only the owner may update (mark as read) or delete their notifications.
+        allow update: if isSignedIn() && isOwner(userId);
+        allow delete: if isSignedIn() && isOwner(userId);
+      }
     }
 
     // ── Posts ─────────────────────────────────────────────────────────────────

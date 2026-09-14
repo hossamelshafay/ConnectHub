@@ -5,6 +5,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
+import 'package:connecthub/features/notification/data/models/notification_model.dart';
+import 'package:connecthub/features/notification/data/repos/notification_repo_imp.dart';
 import 'package:connecthub/features/post/data/repos/post_repo.dart';
 import 'package:connecthub/features/post/data/repos/post_repo_imp.dart';
 import 'package:connecthub/features/post/presentation/widgets/comment_tile.dart';
@@ -325,6 +327,53 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                                       FieldValue.serverTimestamp(),
                                 },
                               );
+
+                              // Fire comment notification (not to self).
+                              final postDoc = await FirebaseFirestore.instance
+                                  .collection('posts')
+                                  .doc(widget.postId)
+                                  .get();
+                              final Map<String, dynamic> postData =
+                                  postDoc.data() ?? {};
+                              final postOwnerId =
+                                  postData['userId'] as String? ?? '';
+                              if (user != null &&
+                                  user.uid != postOwnerId &&
+                                  postOwnerId.isNotEmpty) {
+                                try {
+                                  final senderDoc = await FirebaseFirestore
+                                      .instance
+                                      .collection('users')
+                                      .doc(user.uid)
+                                      .get();
+                                  final Map<String, dynamic> senderData =
+                                      senderDoc.data() ?? {};
+                                  await NotificationRepoImp()
+                                      .createNotification(
+                                    NotificationModel(
+                                      id: '',
+                                      senderId: user.uid,
+                                      senderName: senderData['name']
+                                              as String? ??
+                                          user.displayName ??
+                                          'Someone',
+                                      senderUsername: senderData['username']
+                                              as String? ??
+                                          '',
+                                      senderPhoto: senderData['profileImage']
+                                          as String?,
+                                      receiverId: postOwnerId,
+                                      type: NotificationType.comment,
+                                      postId: widget.postId,
+                                      createdAt: DateTime.now(),
+                                      isRead: false,
+                                    ),
+                                  );
+                                } catch (_) {
+                                  // Notification failure must not break comment.
+                                }
+                              }
+
                               _commentController.clear();
                               setState(() => _isSendingComment = false);
                             },

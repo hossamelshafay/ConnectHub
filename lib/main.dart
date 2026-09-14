@@ -7,6 +7,7 @@ import 'core/utils/app_theme.dart';
 import 'features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'features/home/presentation/manager/cubit/posts_cubit.dart';
 import 'features/chatbot/presentation/manager/cubit/chatbot_cubit.dart';
+import 'features/notification/presentation/manager/cubit/notification_cubit.dart';
 import 'features/splash/presentation/views/splash_view.dart';
 
 void main() async {
@@ -36,6 +37,7 @@ class ConnectHubApp extends StatelessWidget {
         BlocProvider(create: (_) => AuthCubit()),
         BlocProvider(create: (_) => PostsCubit()),
         BlocProvider(create: (_) => ChatbotCubit()),
+        BlocProvider(create: (_) => NotificationCubit()),
       ],
       child: MaterialApp(
         title: 'ConnectHub',

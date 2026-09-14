@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connecthub/features/follow/data/repos/follow_repo.dart';
+import 'package:connecthub/features/notification/data/models/notification_model.dart';
+import 'package:connecthub/features/notification/data/repos/notification_repo_imp.dart';
 
 class FollowRepoImp implements FollowRepo {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -43,6 +45,33 @@ class FollowRepoImp implements FollowRepo {
         'followingCount': FieldValue.increment(1),
       });
     });
+
+    // Fire follow notification — self-follow guard.
+    if (currentUserId != targetUserId) {
+      try {
+        final senderDoc =
+            await _users.doc(currentUserId).get();
+        final senderData =
+            senderDoc.data() as Map<String, dynamic>? ?? {};
+        await NotificationRepoImp().createNotification(
+          NotificationModel(
+            id: '',
+            senderId: currentUserId,
+            senderName: senderData['name'] as String? ?? 'Someone',
+            senderUsername:
+                senderData['username'] as String? ?? '',
+            senderPhoto:
+                senderData['profileImage'] as String?,
+            receiverId: targetUserId,
+            type: NotificationType.follow,
+            createdAt: DateTime.now(),
+            isRead: false,
+          ),
+        );
+      } catch (_) {
+        // Notification failure must not break the follow action.
+      }
+    }
   }
 
   /// Unfollows [targetUserId] from [currentUserId].

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_cubit.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_state.dart';
@@ -361,10 +362,11 @@ class _UserProfileHeader extends StatelessWidget {
                 },
               ),
 
-              const SizedBox(height: 16),
-
-              // Follow / Unfollow button
-              const FollowButton(),
+              // Follow / Unfollow button (never shown for own profile)
+              if (FirebaseAuth.instance.currentUser?.uid != userId) ...[
+                const SizedBox(height: 16),
+                const FollowButton(),
+              ],
             ],
           ),
         );

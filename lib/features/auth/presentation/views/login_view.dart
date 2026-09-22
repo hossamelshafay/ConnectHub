@@ -230,9 +230,15 @@ class _LoginViewState extends State<LoginView>
                             isLoading: state is AuthLoading,
                             onPressed: () {
                               if (_formKey.currentState!.validate()) {
+                                final inputEmail = _emailController.text.trim();
+                                final inputPassword = _passwordController.text;
+                                // ignore: avoid_print
+                                print('=== [LoginView] Sign In button clicked ===');
+                                // ignore: avoid_print
+                                print('Input Email: "$inputEmail"');
                                 context.read<AuthCubit>().login(
-                                      email: _emailController.text,
-                                      password: _passwordController.text,
+                                      email: inputEmail,
+                                      password: inputPassword,
                                     );
                               }
                             },

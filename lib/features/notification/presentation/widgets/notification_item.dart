@@ -121,7 +121,9 @@ class NotificationItem extends StatelessWidget {
       case NotificationType.follow:
         return 'started following you.';
       case NotificationType.mention:
-        return 'mentioned you in a post.';
+        return notification.commentId != null
+            ? 'mentioned you in a comment.'
+            : 'mentioned you in a post.';
     }
   }
 

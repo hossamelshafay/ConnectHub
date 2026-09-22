@@ -7,7 +7,7 @@ import 'package:connecthub/features/notification/presentation/manager/cubit/noti
 import 'package:connecthub/features/notification/presentation/manager/cubit/notification_state.dart';
 import 'package:connecthub/features/notification/presentation/widgets/notification_item.dart';
 import 'package:connecthub/features/post/presentation/views/post_details_view.dart';
-import 'package:connecthub/features/profile/presentation/views/user_profile_view.dart';
+import 'package:connecthub/core/utils/profile_navigation_helper.dart';
 
 class NotificationView extends StatefulWidget {
   const NotificationView({super.key});
@@ -110,14 +110,10 @@ class _NotificationViewState extends State<NotificationView> {
         }
         break;
       case NotificationType.follow:
-        Navigator.push(
+        ProfileNavigationHelper.openUserProfile(
           context,
-          MaterialPageRoute(
-            builder: (_) => UserProfileView(
-              userId: notification.senderId,
-              userName: notification.senderName,
-            ),
-          ),
+          userId: notification.senderId,
+          userName: notification.senderName,
         );
         break;
     }

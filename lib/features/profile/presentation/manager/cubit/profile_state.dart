@@ -44,6 +44,14 @@ class ProfileLoaded extends ProfileState {
 
   String get bio => (userData?['bio'] as String?)?.trim() ?? '';
 
+  String get email {
+    final dbEmail = (userData?['email'] as String?)?.trim();
+    if (dbEmail != null && dbEmail.isNotEmpty) return dbEmail;
+    final authEmail = user.email?.trim();
+    if (authEmail != null && authEmail.isNotEmpty) return authEmail;
+    return '';
+  }
+
   String? get profileImage =>
       (userData?['profileImage'] as String?) ?? user.photoURL;
 

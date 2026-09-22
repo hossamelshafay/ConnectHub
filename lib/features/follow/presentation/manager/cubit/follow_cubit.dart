@@ -34,33 +34,35 @@ class FollowCubit extends Cubit<FollowState> {
   String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
 
   /// Starts real-time listeners for follow status and user follow counts.
-  /// No-ops silently when the current user is the target (can't follow yourself).
   void loadFollowStatus() {
     final currentUserId = _currentUserId;
     if (currentUserId == null) {
       emit(FollowError('Not logged in.'));
       return;
     }
-    if (currentUserId == targetUserId) return;
 
     emit(FollowLoading());
     _followStatusSubscription?.cancel();
     _userDocSubscription?.cancel();
     _userDocInitialized = false;
 
-    // Stream 1: real-time follow status
-    _followStatusSubscription = _followRepo
-        .isFollowingStream(currentUserId, targetUserId)
-        .listen(
-          (isFollowing) {
-            _isFollowing = isFollowing;
-            if (_userDocInitialized) _emitLoaded();
-          },
-          onError: (e, st) =>
-              emit(FollowError(_formatError(e, st as StackTrace?))),
-        );
+    // Stream 1: real-time follow status (only when viewing another user)
+    if (currentUserId != targetUserId) {
+      _followStatusSubscription = _followRepo
+          .isFollowingStream(currentUserId, targetUserId)
+          .listen(
+            (isFollowing) {
+              _isFollowing = isFollowing;
+              if (_userDocInitialized) _emitLoaded();
+            },
+            onError: (e, st) =>
+                emit(FollowError(_formatError(e, st as StackTrace?))),
+          );
+    } else {
+      _isFollowing = false;
+    }
 
-    // Stream 2: target user's document for live follower/following counts
+    // Stream 2: target user's document for live follower/following counts, profile image, username, bio
     _userDocSubscription = _followRepo.getUserStream(targetUserId).listen(
       (doc) {
         if (doc.exists) {

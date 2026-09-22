@@ -9,9 +9,13 @@ class UserPostTile extends StatelessWidget {
   final String title;
   final String description;
   final String? imageUrl;
+  final String? deleteHash;
   final int likeCount;
   final int commentCount;
   final DateTime createdAt;
+  final DateTime? lastEditedAt;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const UserPostTile({
     super.key,
@@ -19,9 +23,13 @@ class UserPostTile extends StatelessWidget {
     required this.title,
     required this.description,
     this.imageUrl,
+    this.deleteHash,
     required this.likeCount,
     required this.commentCount,
     required this.createdAt,
+    this.lastEditedAt,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -117,14 +125,67 @@ class UserPostTile extends StatelessWidget {
                         DateFormat('MMM d').format(createdAt),
                         style: AppTextStyles.caption,
                       ),
+                      if (lastEditedAt != null) ...[
+                        const SizedBox(width: 4),
+                        const Text('•', style: AppTextStyles.caption),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Edited',
+                          style: AppTextStyles.caption.copyWith(
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right,
-                color: AppColors.textHint, size: 22),
+            if (onEdit != null || onDelete != null)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert,
+                    color: AppColors.textSecondary, size: 20),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    onEdit?.call();
+                  } else if (value == 'delete') {
+                    onDelete?.call();
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (onEdit != null)
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined,
+                              size: 20, color: AppColors.textPrimary),
+                          SizedBox(width: 12),
+                          Text('Edit Post'),
+                        ],
+                      ),
+                    ),
+                  if (onDelete != null)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline,
+                              size: 20, color: AppColors.error),
+                          SizedBox(width: 12),
+                          Text('Delete Post',
+                              style: TextStyle(color: AppColors.error)),
+                        ],
+                      ),
+                    ),
+                ],
+              )
+            else
+              const Icon(Icons.chevron_right,
+                  color: AppColors.textHint, size: 22),
           ],
         ),
       ),

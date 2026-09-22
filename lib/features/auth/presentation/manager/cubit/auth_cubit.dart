@@ -21,6 +21,38 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
+  Future<void> reloadUser() async {
+    try {
+      final user = await _authRepo.reloadUser();
+      if (user != null) {
+        emit(AuthAuthenticated(user));
+      }
+      await loadSavedAccounts();
+    } catch (_) {}
+  }
+
+  Future<void> deleteAccount({
+    required String password,
+    void Function(String step)? onProgress,
+  }) async {
+    try {
+      await _authRepo.deleteAccount(
+        password: password,
+        onProgress: onProgress,
+      );
+      emit(AuthUnauthenticated());
+    } on FirebaseAuthException catch (e) {
+      final baseMsg = _authRepo.getErrorMessage(e.code);
+      throw Exception(baseMsg);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  void emitUnauthenticated() {
+    emit(AuthUnauthenticated());
+  }
+
   Future<void> signUp({
     required String name,
     required String email,
@@ -56,10 +88,25 @@ class AuthCubit extends Cubit<AuthState> {
       );
       emit(AuthAuthenticated(user));
     } on FirebaseAuthException catch (e) {
-      emit(AuthError(_authRepo.getErrorMessage(e.code)));
+      // ignore: avoid_print
+      print('=== [AuthCubit] login FirebaseAuthException ===');
+      // ignore: avoid_print
+      print('Code: ${e.code}');
+      // ignore: avoid_print
+      print('Message: ${e.message}');
+      final baseMsg = _authRepo.getErrorMessage(e.code);
+      emit(AuthError('$baseMsg (${e.code})'));
     } on FirebaseException catch (e) {
-      emit(AuthError(e.message ?? _authRepo.getErrorMessage(e.code)));
+      // ignore: avoid_print
+      print('=== [AuthCubit] login FirebaseException ===');
+      // ignore: avoid_print
+      print('Code: ${e.code}');
+      // ignore: avoid_print
+      print('Message: ${e.message}');
+      emit(AuthError('${e.message ?? _authRepo.getErrorMessage(e.code)} (${e.code})'));
     } catch (e) {
+      // ignore: avoid_print
+      print('=== [AuthCubit] login Generic Exception: $e ===');
       final msg = e.toString().replaceAll('Exception: ', '');
       emit(AuthError(msg.isNotEmpty ? msg : 'An unexpected error occurred.'));
     }

@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_cubit.dart';
-import 'package:connecthub/features/profile/presentation/views/user_profile_view.dart';
+import 'package:connecthub/core/utils/profile_navigation_helper.dart';
 
 class FollowersView extends StatelessWidget {
   final String? userId;
@@ -206,14 +206,10 @@ class _FollowerItem extends StatelessWidget {
         return InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            Navigator.push(
+            ProfileNavigationHelper.openUserProfile(
               context,
-              MaterialPageRoute(
-                builder: (_) => UserProfileView(
-                  userId: followerId,
-                  userName: name,
-                ),
-              ),
+              userId: followerId,
+              userName: name,
             );
           },
           child: Padding(

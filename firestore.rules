@@ -63,8 +63,8 @@ service cloud.firestore {
         )
       );
 
-      // Nobody can delete a user document through the client SDK.
-      allow delete: if false;
+      // A user may delete their own profile document upon account deletion.
+      allow delete: if isSignedIn() && isOwner(userId);
 
       // ── followers sub-collection ─────────────────────────────────────────────
       match /followers/{followerId} {
@@ -82,17 +82,25 @@ service cloud.firestore {
 
       // ── notifications sub-collection ─────────────────────────────────────────
       match /notifications/{notificationId} {
-        // Only the owner may read their own notifications.
-        allow read: if isSignedIn() && isOwner(userId);
+        // Owner may read their notifications, or sender when cleaning up.
+        allow read: if isSignedIn() && (
+          isOwner(userId) ||
+          resource.data.senderId == request.auth.uid
+        );
 
         // Any signed-in user may create a notification for another user
         // (triggered by likes, comments, follows).
         // Self-notification is prevented in application code.
         allow create: if isSignedIn();
 
-        // Only the owner may update (mark as read) or delete their notifications.
+        // Only the owner may update (mark as read).
         allow update: if isSignedIn() && isOwner(userId);
-        allow delete: if isSignedIn() && isOwner(userId);
+
+        // Owner can delete their notifications, or sender when cleaning up on account deletion.
+        allow delete: if isSignedIn() && (
+          isOwner(userId) ||
+          resource.data.senderId == request.auth.uid
+        );
       }
     }
 
@@ -111,9 +119,31 @@ service cloud.firestore {
         allow read:   if isSignedIn();
         allow create: if isSignedIn() &&
                          request.resource.data.userId == request.auth.uid;
-        allow update: if false;
-        allow delete: if isSignedIn() && isOwner(resource.data.userId);
+        allow update: if isSignedIn() && isOwner(resource.data.userId);
+        allow delete: if isSignedIn() && (
+          isOwner(resource.data.userId) ||
+          isOwner(get(/databases/$(database)/documents/posts/$(postId)).data.userId)
+        );
       }
+    }
+
+    // ── Collection Group Rules (required for collectionGroup queries) ────────
+    match /{path=**}/comments/{commentId} {
+      allow read: if isSignedIn();
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      );
+    }
+
+    match /{path=**}/notifications/{notificationId} {
+      allow read: if isSignedIn() && (
+        resource.data.receiverId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.receiverId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
     }
   }
 }

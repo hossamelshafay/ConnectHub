@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:connecthub/core/utils/mention_helper.dart';
 import 'package:connecthub/features/post/data/repos/post_repo.dart';
 import 'package:connecthub/features/post/data/repos/post_repo_imp.dart';
 import 'package:connecthub/features/post/presentation/manager/cubit/create_post_state.dart';
@@ -51,11 +52,18 @@ class CreatePostCubit extends Cubit<CreatePostState> {
     emit(CreatePostSubmitting());
 
     try {
-      await _postRepo.createPost(
+      final postId = await _postRepo.createPost(
         title: title,
         description: description,
         image: selectedImage,
       );
+
+      // Dispatch mention notifications (rules: no self-notify, deduplicated, only on new post)
+      MentionHelper.sendMentionNotifications(
+        text: '$title $description',
+        postId: postId,
+      );
+
       emit(CreatePostSuccess());
     } catch (e) {
       emit(CreatePostError(e.toString().replaceAll('Exception: ', '')));

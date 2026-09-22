@@ -4,14 +4,17 @@ import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
+import 'package:connecthub/core/utils/mention_text.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
 import 'package:connecthub/features/post/presentation/views/post_details_view.dart';
-import 'package:connecthub/features/profile/presentation/views/user_profile_view.dart';
+import 'package:connecthub/core/utils/profile_navigation_helper.dart';
 
 class PostCard extends StatelessWidget {
   final PostModel post;
   final VoidCallback onLike;
   final VoidCallback onComment;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
   final bool isOwnPost;
 
   const PostCard({
@@ -19,6 +22,8 @@ class PostCard extends StatelessWidget {
     required this.post,
     required this.onLike,
     required this.onComment,
+    this.onEdit,
+    this.onDelete,
     this.isOwnPost = false,
   });
 
@@ -86,52 +91,107 @@ class PostCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tapping the avatar / name navigates to that user's profile.
-                  // Own posts are excluded so the current user doesn't follow themselves.
-                  GestureDetector(
-                    onTap: isOwnPost
-                        ? null
-                        : () => Navigator.push(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => ProfileNavigationHelper.openUserProfile(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => UserProfileView(
-                                userId: post.userId,
-                                userName: post.userName,
-                              ),
-                            ),
+                            userId: post.userId,
+                            userName: post.userName,
                           ),
-                    child: Row(
-                      children: [
-                        UserAvatar(name: post.userName, size: 44),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                post.userName,
-                                style: AppTextStyles.body1.copyWith(
-                                  fontWeight: FontWeight.w600,
+                              UserAvatar(name: post.userName, size: 44),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      post.userName,
+                                      style: AppTextStyles.body1.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Text(timeAgo, style: AppTextStyles.caption),
+                                        if (post.lastEditedAt != null) ...[
+                                          const SizedBox(width: 4),
+                                          const Text('•', style: AppTextStyles.caption),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Edited',
+                                            style: AppTextStyles.caption.copyWith(
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Text(timeAgo, style: AppTextStyles.caption),
                             ],
                           ),
                         ),
-                        if (!isOwnPost)
-                          const Icon(
-                            Icons.chevron_right,
-                            size: 16,
-                            color: AppColors.textHint,
-                          ),
-                      ],
-                    ),
+                      ),
+                      if (isOwnPost && (onEdit != null || onDelete != null))
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert,
+                              color: AppColors.textSecondary),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              onEdit?.call();
+                            } else if (value == 'delete') {
+                              onDelete?.call();
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            if (onEdit != null)
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined,
+                                        size: 20, color: AppColors.textPrimary),
+                                    SizedBox(width: 12),
+                                    Text('Edit Post'),
+                                  ],
+                                ),
+                              ),
+                            if (onDelete != null)
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline,
+                                        size: 20, color: AppColors.error),
+                                    SizedBox(width: 12),
+                                    Text('Delete Post',
+                                        style: TextStyle(color: AppColors.error)),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        )
+                      else if (!isOwnPost)
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: AppColors.textHint,
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   Text(post.title, style: AppTextStyles.headline3),
                   const SizedBox(height: 8),
-                  Text(
-                    post.description,
+                  MentionText(
+                    text: post.description,
                     style: AppTextStyles.body2,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,

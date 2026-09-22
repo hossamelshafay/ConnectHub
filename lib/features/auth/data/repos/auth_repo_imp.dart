@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:connecthub/core/services/account_deletion_service.dart';
 import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo.dart';
 
@@ -46,11 +47,39 @@ class AuthRepoImp implements AuthRepo {
 
   @override
   Future<User> login({required String email, required String password}) async {
-    await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
+    final cleanedEmail = email.trim();
+    // Debug logging for email synchronization verification
+    // ignore: avoid_print
+    print('=== [AuthRepo] signInWithEmailAndPassword attempt ===');
+    // ignore: avoid_print
+    print('Email passed to signInWithEmailAndPassword: "$cleanedEmail"');
+
+    final credential = await _auth.signInWithEmailAndPassword(
+      email: cleanedEmail,
       password: password,
     );
-    final user = _auth.currentUser!;
+    final user = _auth.currentUser ?? credential.user!;
+    // ignore: avoid_print
+    print('=== [AuthRepo] signInWithEmailAndPassword SUCCESS ===');
+    // ignore: avoid_print
+    print('Authenticated user.uid: ${user.uid}');
+    // ignore: avoid_print
+    print('Authenticated user.email: ${user.email}');
+
+    // Synchronize Firestore user document with verified auth email
+    if (user.email != null && user.email!.isNotEmpty) {
+      try {
+        await _firestore.collection('users').doc(user.uid).set({
+          'email': user.email!.trim(),
+        }, SetOptions(merge: true));
+        // ignore: avoid_print
+        print('=== [AuthRepo] Firestore users/${user.uid}.email synced to "${user.email}" ===');
+      } catch (e) {
+        // ignore: avoid_print
+        print('=== [AuthRepo] Firestore sync warning: $e ===');
+      }
+    }
+
     await syncCurrentAccountToSaved();
     return user;
   }
@@ -63,6 +92,62 @@ class AuthRepoImp implements AuthRepo {
   @override
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  @override
+  Future<User?> reloadUser() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.reload();
+      await syncCurrentAccountToSaved();
+      return _auth.currentUser;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> deleteAccount({
+    required String password,
+    void Function(String step)? onProgress,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('No authenticated user session found.');
+    }
+
+    // 1. Re-authenticate user
+    onProgress?.call('Re-authenticating your account...');
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
+
+    // 2. Cascade delete all Firestore collections, comments, likes, notifications
+    await AccountDeletionService(firestore: _firestore).executeFullDeletion(
+      user,
+      onProgress: onProgress,
+    );
+
+    // 3. Remove from Secure Storage
+    onProgress?.call('Removing saved credentials...');
+    await removeSavedAccount(user.uid);
+    final remaining = await getSavedAccounts();
+    if (remaining.isEmpty) {
+      try {
+        await _storage.deleteAll();
+      } catch (_) {}
+    }
+
+    // 4. Delete Firebase Authentication account
+    onProgress?.call('Deleting authentication account...');
+    await user.delete();
+
+    // 5. Sign out
+    onProgress?.call('Finalizing...');
+    try {
+      await _auth.signOut();
+    } catch (_) {}
   }
 
   @override

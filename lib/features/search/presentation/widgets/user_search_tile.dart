@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
-import 'package:connecthub/features/profile/presentation/views/user_profile_view.dart';
+import 'package:connecthub/core/utils/profile_navigation_helper.dart';
 
 /// A single user result tile for the Search screen.
 ///
 /// Reuses [UserAvatar] from app_widgets.dart.
-/// Navigates to [UserProfileView] on tap.
+/// Navigates to the appropriate profile on tap.
 class UserSearchTile extends StatelessWidget {
   final Map<String, dynamic> user;
 
@@ -25,11 +25,10 @@ class UserSearchTile extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        Navigator.push(
+        ProfileNavigationHelper.openUserProfile(
           context,
-          MaterialPageRoute(
-            builder: (_) => UserProfileView(userId: id, userName: name),
-          ),
+          userId: id,
+          userName: name,
         );
       },
       borderRadius: BorderRadius.circular(16),

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
-import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
-import 'package:connecthub/features/auth/presentation/views/login_view.dart';
 import 'package:connecthub/features/auth/presentation/widgets/manage_accounts_bottom_sheet.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_cubit.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_state.dart';
@@ -12,21 +10,29 @@ import 'package:connecthub/features/profile/presentation/views/following_view.da
 import 'package:connecthub/features/profile/presentation/views/liked_posts_view.dart';
 import 'package:connecthub/features/profile/presentation/widgets/profile_card.dart';
 import 'package:connecthub/features/profile/presentation/widgets/user_post_tile.dart';
+import 'package:connecthub/features/settings/presentation/views/settings_view.dart';
+import 'package:connecthub/features/post/presentation/views/edit_post_view.dart';
+import 'package:connecthub/features/post/presentation/widgets/delete_post_dialog.dart';
+import 'package:connecthub/features/post/presentation/manager/cubit/post_action_cubit.dart';
 
 class ProfileView extends StatelessWidget {
-  const ProfileView({super.key});
+  final bool showBackButton;
+
+  const ProfileView({super.key, this.showBackButton = false});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ProfileCubit()..loadProfile(),
-      child: const _ProfileViewBody(),
+      child: _ProfileViewBody(showBackButton: showBackButton),
     );
   }
 }
 
 class _ProfileViewBody extends StatelessWidget {
-  const _ProfileViewBody();
+  final bool showBackButton;
+
+  const _ProfileViewBody({this.showBackButton = false});
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +46,15 @@ class _ProfileViewBody extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
                 children: [
+                  if (showBackButton) ...[
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_rounded),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   Text('Profile', style: AppTextStyles.headline2),
                   const Spacer(),
                   GestureDetector(
@@ -73,7 +88,12 @@ class _ProfileViewBody extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => _showSignOutDialog(context),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SettingsView(),
+                      ),
+                    ),
                     child: Container(
                       width: 42,
                       height: 42,
@@ -82,7 +102,7 @@ class _ProfileViewBody extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Icon(
-                        Icons.logout_rounded,
+                        Icons.settings_rounded,
                         color: AppColors.textSecondary,
                         size: 20,
                       ),
@@ -302,9 +322,82 @@ class _ProfileViewBody extends StatelessWidget {
                                     title: post.title,
                                     description: post.description,
                                     imageUrl: post.imageUrl,
+                                    deleteHash: post.deleteHash,
                                     likeCount: post.likeCount,
                                     commentCount: post.commentCount,
                                     createdAt: post.createdAt,
+                                    lastEditedAt: post.lastEditedAt,
+                                    onEdit: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EditPostView(
+                                            postId: post.id,
+                                            initialTitle: post.title,
+                                            initialDescription:
+                                                post.description,
+                                            initialImageUrl: post.imageUrl,
+                                            initialDeleteHash: post.deleteHash,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    onDelete: () {
+                                      DeletePostDialog.show(
+                                        context,
+                                        description: post.description,
+                                        onConfirm: () async {
+                                          final postActionCubit =
+                                              PostActionCubit();
+                                          try {
+                                            await postActionCubit.deletePost(
+                                              postId: post.id,
+                                              deleteHash: post.deleteHash,
+                                            );
+                                            if (context.mounted) {
+                                              context
+                                                  .read<ProfileCubit>()
+                                                  .loadProfile();
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: const Text(
+                                                      'Post deleted successfully!'),
+                                                  backgroundColor:
+                                                      AppColors.success,
+                                                  behavior: SnackBarBehavior
+                                                      .floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content:
+                                                      Text(e.toString()),
+                                                  backgroundColor:
+                                                      AppColors.error,
+                                                  behavior: SnackBarBehavior
+                                                      .floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                      );
+                                    },
                                   );
                                 },
                               ),
@@ -324,38 +417,5 @@ class _ProfileViewBody extends StatelessWidget {
     );
   }
 
-  void _showSignOutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<AuthCubit>().signOut();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (_) => const LoginView(),
-                ),
-                (route) => false,
-              );
-            },
-            child: const Text(
-              'Sign Out',
-              style: TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }

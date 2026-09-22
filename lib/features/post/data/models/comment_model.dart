@@ -6,6 +6,7 @@ class CommentModel {
   final String userName;
   final String text;
   final DateTime createdAt;
+  final DateTime? lastEditedAt;
 
   CommentModel({
     required this.id,
@@ -13,16 +14,18 @@ class CommentModel {
     required this.userName,
     required this.text,
     required this.createdAt,
+    this.lastEditedAt,
   });
 
   factory CommentModel.fromDoc(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
     return CommentModel(
       id: doc.id,
       userId: data['userId'] ?? '',
       userName: data['userName'] ?? 'User',
       text: data['text'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastEditedAt: (data['lastEditedAt'] as Timestamp?)?.toDate(),
     );
   }
 }

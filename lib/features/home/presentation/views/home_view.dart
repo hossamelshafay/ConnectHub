@@ -15,6 +15,9 @@ import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.d
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
 import 'package:connecthub/features/profile/presentation/views/profile_view.dart';
 import 'package:connecthub/features/search/presentation/views/search_view.dart';
+import 'package:connecthub/features/post/presentation/views/edit_post_view.dart';
+import 'package:connecthub/features/post/presentation/widgets/delete_post_dialog.dart';
+import 'package:connecthub/features/post/presentation/manager/cubit/post_action_cubit.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -42,7 +45,6 @@ class _HomeViewState extends State<HomeView> {
       const _FeedPage(),
       const SearchView(),
       const NotificationView(),
-      const ChatbotView(),
       const ProfileView(),
     ];
 
@@ -108,16 +110,10 @@ class _HomeViewState extends State<HomeView> {
                   onTap: () => setState(() => _currentIndex = 2),
                 ),
                 _NavItem(
-                  icon: Icons.smart_toy_rounded,
-                  label: 'AI Chat',
-                  isSelected: _currentIndex == 3,
-                  onTap: () => setState(() => _currentIndex = 3),
-                ),
-                _NavItem(
                   icon: Icons.person_rounded,
                   label: 'Profile',
-                  isSelected: _currentIndex == 4,
-                  onTap: () => setState(() => _currentIndex = 4),
+                  isSelected: _currentIndex == 3,
+                  onTap: () => setState(() => _currentIndex = 3),
                 ),
               ],
             ),
@@ -293,6 +289,44 @@ class _FeedPage extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text('ConnectHub', style: AppTextStyles.headline2),
+                const Spacer(),
+                // AI Assistant shortcut
+                Tooltip(
+                  message: 'AI Assistant',
+                  child: Hero(
+                    tag: 'ai_chat_fab',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Scaffold(
+                              backgroundColor: AppColors.background,
+                              body: const ChatbotView(),
+                            ),
+                          ),
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF7C4DFF), Color(0xFFE040FB)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.smart_toy_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -351,9 +385,10 @@ class _FeedPage extends StatelessWidget {
                       itemCount: state.posts.length,
                       itemBuilder: (context, index) {
                         final post = state.posts[index];
+                        final isOwn = post.userId == currentUserId;
                         return PostCard(
                           post: post,
-                          isOwnPost: post.userId == currentUserId,
+                          isOwnPost: isOwn,
                           onLike: () {
                             context
                                 .read<PostsCubit>()
@@ -368,6 +403,72 @@ class _FeedPage extends StatelessWidget {
                               ),
                             );
                           },
+                          onEdit: isOwn
+                              ? () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => EditPostView(
+                                        postId: post.id,
+                                        initialTitle: post.title,
+                                        initialDescription: post.description,
+                                        initialImageUrl: post.imageUrl,
+                                        initialDeleteHash: post.deleteHash,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              : null,
+                          onDelete: isOwn
+                              ? () {
+                                  DeletePostDialog.show(
+                                    context,
+                                    description: post.description,
+                                    onConfirm: () async {
+                                      final cubit = PostActionCubit();
+                                      try {
+                                        await cubit.deletePost(
+                                          postId: post.id,
+                                          deleteHash: post.deleteHash,
+                                        );
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: const Text(
+                                                  'Post deleted successfully!'),
+                                              backgroundColor:
+                                                  AppColors.success,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(e.toString()),
+                                              backgroundColor: AppColors.error,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                  );
+                                }
+                              : null,
                         );
                       },
                     ),

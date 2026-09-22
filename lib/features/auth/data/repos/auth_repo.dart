@@ -14,6 +14,11 @@ abstract class AuthRepo {
   });
   Future<void> forgotPassword(String email);
   Future<void> signOut();
+  Future<User?> reloadUser();
+  Future<void> deleteAccount({
+    required String password,
+    void Function(String step)? onProgress,
+  });
   void checkAuthStatus({
     required void Function(User user) onAuthenticated,
     required void Function() onUnauthenticated,

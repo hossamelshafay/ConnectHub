@@ -7,10 +7,12 @@ class PostModel {
   final String title;
   final String description;
   final String? imageUrl;
+  final String? deleteHash;
   final List<String> likes;
   final int likeCount;
   final int commentCount;
   final DateTime createdAt;
+  final DateTime? lastEditedAt;
 
   PostModel({
     required this.id,
@@ -19,14 +21,16 @@ class PostModel {
     required this.title,
     required this.description,
     this.imageUrl,
+    this.deleteHash,
     required this.likes,
     required this.likeCount,
     required this.commentCount,
     required this.createdAt,
+    this.lastEditedAt,
   });
 
   factory PostModel.fromDoc(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
     return PostModel(
       id: doc.id,
       userId: data['userId'] ?? '',
@@ -34,10 +38,13 @@ class PostModel {
       title: data['title'] ?? '',
       description: data['description'] ?? '',
       imageUrl: data['imageUrl'],
+      deleteHash: data['deleteHash'],
       likes: List<String>.from(data['likes'] ?? []),
       likeCount: data['likeCount'] ?? 0,
       commentCount: data['commentCount'] ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastEditedAt: (data['lastEditedAt'] as Timestamp?)?.toDate(),
     );
   }
 }
+

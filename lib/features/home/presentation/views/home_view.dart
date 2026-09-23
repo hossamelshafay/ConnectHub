@@ -18,6 +18,10 @@ import 'package:connecthub/features/search/presentation/views/search_view.dart';
 import 'package:connecthub/features/post/presentation/views/edit_post_view.dart';
 import 'package:connecthub/features/post/presentation/widgets/delete_post_dialog.dart';
 import 'package:connecthub/features/post/presentation/manager/cubit/post_action_cubit.dart';
+import 'package:connecthub/features/chat/presentation/manager/cubit/conversations_cubit.dart';
+import 'package:connecthub/features/chat/presentation/manager/cubit/conversations_state.dart';
+import 'package:connecthub/features/chat/presentation/views/conversations_view.dart';
+import 'package:connecthub/features/chat/data/repos/chat_repo_imp.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -26,16 +30,46 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView> {
+class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     context.read<PostsCubit>().loadPosts();
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       context.read<NotificationCubit>().listenToNotifications(uid);
+      context.read<ConversationsCubit>().listenToConversations(uid);
+      ChatRepoImp().setPresence(uid, true);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      ChatRepoImp().setPresence(uid, false);
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        ChatRepoImp().setPresence(uid, true);
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        ChatRepoImp().setPresence(uid, false);
+        break;
     }
   }
 
@@ -44,6 +78,7 @@ class _HomeViewState extends State<HomeView> {
     final pages = [
       const _FeedPage(),
       const SearchView(),
+      const ConversationsView(),
       const NotificationView(),
       const ProfileView(),
     ];
@@ -53,6 +88,8 @@ class _HomeViewState extends State<HomeView> {
         if (state is AuthAuthenticated) {
           context.read<PostsCubit>().loadPosts();
           context.read<NotificationCubit>().listenToNotifications(state.user.uid);
+          context.read<ConversationsCubit>().listenToConversations(state.user.uid);
+          ChatRepoImp().setPresence(state.user.uid, true);
         }
       },
       child: Scaffold(
@@ -105,15 +142,19 @@ class _HomeViewState extends State<HomeView> {
                   isSelected: _currentIndex == 1,
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
-                _NotificationNavItem(
+                _MessagesNavItem(
                   isSelected: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
+                ),
+                _NotificationNavItem(
+                  isSelected: _currentIndex == 3,
+                  onTap: () => setState(() => _currentIndex = 3),
                 ),
                 _NavItem(
                   icon: Icons.person_rounded,
                   label: 'Profile',
-                  isSelected: _currentIndex == 3,
-                  onTap: () => setState(() => _currentIndex = 3),
+                  isSelected: _currentIndex == 4,
+                  onTap: () => setState(() => _currentIndex = 4),
                 ),
               ],
             ),
@@ -250,6 +291,98 @@ class _NotificationNavItem extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'Alerts',
+                style: AppTextStyles.body2.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Messages nav item with an animated badge for unread message count.
+class _MessagesNavItem extends StatelessWidget {
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _MessagesNavItem({
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            BlocBuilder<ConversationsCubit, ConversationsState>(
+              builder: (context, state) {
+                final unread = state is ConversationsLoaded
+                    ? state.all.fold<int>(
+                        0,
+                        (sum, c) => sum + c.myUnreadCount(
+                          FirebaseAuth.instance.currentUser?.uid ?? '',
+                        ),
+                      )
+                    : 0;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_rounded,
+                      size: 24,
+                      color:
+                          isSelected ? AppColors.primary : AppColors.textHint,
+                    ),
+                    if (unread > 0)
+                      Positioned(
+                        top: -4,
+                        right: -6,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 8),
+              Text(
+                'Messages',
                 style: AppTextStyles.body2.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,

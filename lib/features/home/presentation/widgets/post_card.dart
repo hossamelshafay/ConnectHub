@@ -8,6 +8,7 @@ import 'package:connecthub/core/utils/mention_text.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
 import 'package:connecthub/features/post/presentation/views/post_details_view.dart';
 import 'package:connecthub/core/utils/profile_navigation_helper.dart';
+import 'package:connecthub/features/chat/presentation/widgets/share_post_sheet.dart';
 
 class PostCard extends StatelessWidget {
   final PostModel post;
@@ -40,6 +41,7 @@ class PostCard extends StatelessWidget {
           MaterialPageRoute(builder: (_) => PostDetailsView(postId: post.id)),
         );
       },
+      onLongPress: () => _openShareSheet(context),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -244,6 +246,13 @@ class PostCard extends StatelessWidget {
                         color: AppColors.textHint,
                         onTap: onComment,
                       ),
+                      const SizedBox(width: 20),
+                      _ActionButton(
+                        icon: Icons.share_outlined,
+                        label: 'Share',
+                        color: AppColors.textHint,
+                        onTap: () => _openShareSheet(context),
+                      ),
                     ],
                   ),
                 ],
@@ -252,6 +261,30 @@ class PostCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _openShareSheet(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please log in to share posts.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+    SharePostSheet.show(
+      context,
+      post: post,
+      myUid: user.uid,
+      myName: (user.displayName != null && user.displayName!.trim().isNotEmpty)
+          ? user.displayName!.trim()
+          : 'User',
     );
   }
 

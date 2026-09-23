@@ -19,6 +19,8 @@ import 'package:connecthub/features/post/presentation/views/edit_post_view.dart'
 import 'package:connecthub/features/post/presentation/widgets/delete_post_dialog.dart';
 import 'package:connecthub/features/post/presentation/widgets/delete_comment_dialog.dart';
 import 'package:connecthub/features/post/presentation/manager/cubit/post_action_cubit.dart';
+import 'package:connecthub/features/home/data/models/post_model.dart';
+import 'package:connecthub/features/chat/presentation/widgets/share_post_sheet.dart';
 
 class PostDetailsView extends StatefulWidget {
   final String postId;
@@ -450,6 +452,59 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                                 '${data['commentCount'] ?? 0}',
                                 style: AppTextStyles.body1
                                     .copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(width: 16),
+                              InkWell(
+                                onTap: () {
+                                  final user =
+                                      FirebaseAuth.instance.currentUser;
+                                  if (user == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text(
+                                            'Please log in to share posts.'),
+                                        backgroundColor: AppColors.error,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  final postObj =
+                                      PostModel.fromDoc(snapshot.data!);
+                                  SharePostSheet.show(
+                                    context,
+                                    post: postObj,
+                                    myUid: user.uid,
+                                    myName: (user.displayName != null &&
+                                            user.displayName!.trim().isNotEmpty)
+                                        ? user.displayName!.trim()
+                                        : 'User',
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.share_outlined,
+                                          color: AppColors.textHint, size: 22),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Share',
+                                        style: TextStyle(
+                                          color: AppColors.textHint,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ],
                           ),

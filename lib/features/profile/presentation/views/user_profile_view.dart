@@ -13,6 +13,8 @@ import 'package:connecthub/features/profile/presentation/views/followers_view.da
 import 'package:connecthub/features/profile/presentation/views/following_view.dart';
 import 'package:connecthub/features/profile/presentation/widgets/profile_card.dart';
 import 'package:connecthub/features/profile/presentation/widgets/user_post_tile.dart';
+import 'package:connecthub/features/chat/data/repos/chat_repo_imp.dart';
+import 'package:connecthub/features/chat/presentation/views/chat_view.dart';
 
 /// Displays another user's public profile with follow/unfollow functionality.
 /// Provides its own [FollowCubit] and a scoped [PostsCubit] so neither
@@ -362,10 +364,21 @@ class _UserProfileHeader extends StatelessWidget {
                 },
               ),
 
-              // Follow / Unfollow button (never shown for own profile)
+              // Follow / Unfollow button & Message button (never shown for own profile)
               if (FirebaseAuth.instance.currentUser?.uid != userId) ...[
                 const SizedBox(height: 16),
-                const FollowButton(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const FollowButton(),
+                    const SizedBox(width: 12),
+                    _MessageProfileButton(
+                      userId: userId,
+                      userName: userName,
+                      userPhoto: profileImage,
+                    ),
+                  ],
+                ),
               ],
             ],
           ),
@@ -383,6 +396,117 @@ class _UserProfileHeader extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
+      ),
+    );
+  }
+}
+
+class _MessageProfileButton extends StatefulWidget {
+  final String userId;
+  final String userName;
+  final String? userPhoto;
+
+  const _MessageProfileButton({
+    required this.userId,
+    required this.userName,
+    this.userPhoto,
+  });
+
+  @override
+  State<_MessageProfileButton> createState() => _MessageProfileButtonState();
+}
+
+class _MessageProfileButtonState extends State<_MessageProfileButton> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _loading
+          ? null
+          : () async {
+              final myUser = FirebaseAuth.instance.currentUser;
+              if (myUser == null) return;
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              setState(() => _loading = true);
+              try {
+                final myName = (myUser.displayName ?? '').trim().isNotEmpty
+                    ? myUser.displayName!.trim()
+                    : myUser.email?.split('@').first ?? 'User';
+                final convId = await ChatRepoImp().getOrCreateConversation(
+                  myUid: myUser.uid,
+                  myName: myName,
+                  myPhoto: myUser.photoURL,
+                  otherUid: widget.userId,
+                  otherName: widget.userName,
+                  otherPhoto: widget.userPhoto,
+                );
+                if (!mounted) return;
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatView(
+                      conversationId: convId,
+                      peerId: widget.userId,
+                      peerName: widget.userName,
+                      peerPhoto: widget.userPhoto,
+                    ),
+                  ),
+                );
+              } catch (e) {
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to open chat: $e'),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _loading = false);
+              }
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.7),
+            width: 1.5,
+          ),
+        ),
+        child: _loading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Message',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

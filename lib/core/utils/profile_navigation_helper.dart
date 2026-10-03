@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/mention_helper.dart';
-import 'package:connecthub/features/profile/presentation/views/profile_view.dart';
-import 'package:connecthub/features/profile/presentation/views/user_profile_view.dart';
+import 'package:connecthub/features/profile/presentation/views/profile_router.dart';
 
 /// Centralized helper for opening user profiles consistently across the app.
 class ProfileNavigationHelper {
-  /// Opens a user profile by [userId].
+  /// Opens a user profile by [userId] using the reusable [ProfileRouter].
   ///
-  /// - If [userId] is the authenticated user, opens [ProfileView] with a back button.
-  /// - Otherwise, opens the full [UserProfileView].
+  /// Dynamically determines whether the user is Personal or Professional
+  /// and renders the appropriate view.
   static void openUserProfile(
     BuildContext context, {
     required String userId,
@@ -18,28 +16,16 @@ class ProfileNavigationHelper {
   }) {
     if (userId.isEmpty) return;
 
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-
-    if (currentUserId != null && userId == currentUserId) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const ProfileView(showBackButton: true),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProfileRouter(
+          userId: userId,
+          userName: userName,
+          showBackButton: true,
         ),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => UserProfileView(
-            userId: userId,
-            userName: (userName != null && userName.trim().isNotEmpty)
-                ? userName.trim()
-                : 'User',
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   /// Resolves [username] using [MentionHelper.getUserByUsername] and opens the corresponding profile.

@@ -19,7 +19,7 @@ class LikedBySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.6,
+        maxHeight: MediaQuery.of(context).size.height * 0.65,
       ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
@@ -28,9 +28,11 @@ class LikedBySheet extends StatelessWidget {
           topRight: Radius.circular(24),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           const SizedBox(height: 12),
           Container(
             width: 40,
@@ -60,21 +62,22 @@ class LikedBySheet extends StatelessWidget {
                   return FutureBuilder<DocumentSnapshot>(
                     future: postRepo.getUser(userIds[index]),
                     builder: (context, snap) {
-                      final name = snap.data?.exists == true
-                          ? (snap.data!.data()
-                                  as Map<String, dynamic>)['name'] ??
-                              'User'
-                          : 'User';
-                      final email = snap.data?.exists == true
-                          ? (snap.data!.data()
-                                  as Map<String, dynamic>)['email'] ??
-                              ''
-                          : '';
+                      final userData = snap.data?.exists == true
+                          ? snap.data!.data() as Map<String, dynamic>?
+                          : null;
+                      final name = userData?['name']?.toString() ?? 'User';
+                      final email = userData?['email']?.toString() ?? '';
+                      final profileImage = userData?['profileImage'] as String?;
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Row(
                           children: [
-                            UserAvatar(name: name.toString(), size: 42),
+                            UserAvatarById(
+                              userId: userIds[index],
+                              fallbackName: name,
+                              size: 42,
+                              fallbackImageUrl: profileImage,
+                            ),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Column(
@@ -102,6 +105,7 @@ class LikedBySheet extends StatelessWidget {
           const SizedBox(height: 16),
         ],
       ),
-    );
+    ),
+  );
   }
 }

@@ -214,8 +214,11 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                                 },
                                 child: Row(
                                   children: [
-                                    UserAvatar(
-                                        name: data['userName'] ?? '', size: 50),
+                                    UserAvatarById(
+                                      userId: postOwnerId,
+                                      fallbackName: data['userName'] ?? '',
+                                      size: 50,
+                                    ),
                                     const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
@@ -374,25 +377,26 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                           const SizedBox(height: 16),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: CachedNetworkImage(
-                              imageUrl: data['imageUrl'],
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder: (_, _) => Container(
-                                height: 250,
-                                color: AppColors.surfaceVariant,
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.primary,
+                            child: AspectRatio(
+                              aspectRatio: 16 / 9,
+                              child: CachedNetworkImage(
+                                imageUrl: data['imageUrl'],
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) => Container(
+                                  color: AppColors.surfaceVariant,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              errorWidget: (_, _, _) => Container(
-                                height: 250,
-                                color: AppColors.surfaceVariant,
-                                child: const Icon(Icons.broken_image_outlined,
-                                    color: AppColors.textHint, size: 40),
+                                errorWidget: (_, _, _) => Container(
+                                  color: AppColors.surfaceVariant,
+                                  child: const Icon(Icons.broken_image_outlined,
+                                      color: AppColors.textHint, size: 40),
+                                ),
                               ),
                             ),
                           ),
@@ -405,8 +409,11 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                             color: AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Row(
-                            children: [
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              children: [
                               GestureDetector(
                                 onTap: () {
                                   widget.postRepo.toggleLike(
@@ -509,7 +516,8 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                      ),
+                      const SizedBox(height: 24),
                         Text('Comments', style: AppTextStyles.headline3),
                         const SizedBox(height: 12),
                         StreamBuilder<QuerySnapshot>(

@@ -13,7 +13,7 @@ import 'package:connecthub/features/notification/presentation/manager/cubit/noti
 import 'package:connecthub/features/notification/presentation/views/notification_view.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
-import 'package:connecthub/features/profile/presentation/views/profile_view.dart';
+import 'package:connecthub/features/profile/presentation/views/profile_router.dart';
 import 'package:connecthub/features/search/presentation/views/search_view.dart';
 import 'package:connecthub/features/post/presentation/views/edit_post_view.dart';
 import 'package:connecthub/features/post/presentation/widgets/delete_post_dialog.dart';
@@ -80,7 +80,10 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
       const SearchView(),
       const ConversationsView(),
       const NotificationView(),
-      const ProfileView(),
+      ProfileRouter(
+        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        showBackButton: false,
+      ),
     ];
 
     return BlocListener<AuthCubit, AuthState>(
@@ -126,7 +129,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -186,7 +189,10 @@ class _NavItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 8,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
@@ -194,6 +200,7 @@ class _NavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -201,12 +208,16 @@ class _NavItem extends StatelessWidget {
               color: isSelected ? AppColors.primary : AppColors.textHint,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: AppTextStyles.body2.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body2.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -234,7 +245,10 @@ class _NotificationNavItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 8,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
@@ -242,6 +256,7 @@ class _NotificationNavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             BlocBuilder<NotificationCubit, NotificationState>(
               builder: (context, state) {
@@ -288,12 +303,16 @@ class _NotificationNavItem extends StatelessWidget {
               },
             ),
             if (isSelected) ...[
-              const SizedBox(width: 8),
-              Text(
-                'Alerts',
-                style: AppTextStyles.body2.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Alerts',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body2.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -321,7 +340,10 @@ class _MessagesNavItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 8,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
@@ -329,6 +351,7 @@ class _MessagesNavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             BlocBuilder<ConversationsCubit, ConversationsState>(
               builder: (context, state) {
@@ -380,12 +403,16 @@ class _MessagesNavItem extends StatelessWidget {
               },
             ),
             if (isSelected) ...[
-              const SizedBox(width: 8),
-              Text(
-                'Messages',
-                style: AppTextStyles.body2.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Messages',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body2.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

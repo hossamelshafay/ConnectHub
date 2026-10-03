@@ -127,12 +127,14 @@ class _SharePostSheetState extends State<SharePostSheet> {
                       final peerName = conv.otherParticipantName(widget.myUid);
                       final peerPhoto =
                           conv.otherParticipantPhoto(widget.myUid);
+                      final peerId = conv.otherParticipantId(widget.myUid);
 
                       return ListTile(
-                        leading: UserAvatar(
-                          name: peerName,
+                        leading: UserAvatarById(
+                          userId: peerId,
+                          fallbackName: peerName,
                           size: 44,
-                          imageUrl: peerPhoto,
+                          fallbackImageUrl: peerPhoto,
                         ),
                         title: Text(peerName, style: AppTextStyles.body1),
                         subtitle: conv.lastMessage.isNotEmpty

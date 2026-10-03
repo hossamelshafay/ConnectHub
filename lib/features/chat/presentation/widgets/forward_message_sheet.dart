@@ -92,8 +92,12 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
                     final peerId = conv.otherParticipantId(widget.myUid);
 
                     return ListTile(
-                      leading: UserAvatar(
-                          name: peerName, size: 44, imageUrl: peerPhoto),
+                      leading: UserAvatarById(
+                        userId: peerId,
+                        fallbackName: peerName,
+                        size: 44,
+                        fallbackImageUrl: peerPhoto,
+                      ),
                       title: Text(peerName, style: AppTextStyles.body1),
                       onTap: _isForwarding
                           ? null

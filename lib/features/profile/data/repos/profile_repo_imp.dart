@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/services/image_bb_service.dart';
+import 'package:connecthub/features/auth/data/repos/auth_repo_imp.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
 import 'package:connecthub/features/profile/data/repos/profile_repo.dart';
 
@@ -86,6 +87,10 @@ class ProfileRepoImp implements ProfileRepo {
     await user.reload();
 
     await _users.doc(user.uid).set(updates, SetOptions(merge: true));
+
+    try {
+      await AuthRepoImp().syncCurrentAccountToSaved();
+    } catch (_) {}
   }
 
   @override

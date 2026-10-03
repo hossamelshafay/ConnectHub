@@ -12,6 +12,7 @@ import 'package:connecthub/features/profile/presentation/manager/cubit/profile_c
 import 'package:connecthub/features/profile/presentation/views/followers_view.dart';
 import 'package:connecthub/features/profile/presentation/views/following_view.dart';
 import 'package:connecthub/features/profile/presentation/widgets/profile_card.dart';
+import 'package:connecthub/features/portfolio/presentation/widgets/portfolio_switch_button.dart';
 import 'package:connecthub/features/profile/presentation/widgets/user_post_tile.dart';
 import 'package:connecthub/features/chat/data/repos/chat_repo_imp.dart';
 import 'package:connecthub/features/chat/presentation/views/chat_view.dart';
@@ -22,11 +23,13 @@ import 'package:connecthub/features/chat/presentation/views/chat_view.dart';
 class UserProfileView extends StatelessWidget {
   final String userId;
   final String userName;
+  final VoidCallback? onSwitchToPortfolio;
 
   const UserProfileView({
     super.key,
     required this.userId,
     required this.userName,
+    this.onSwitchToPortfolio,
   });
 
   @override
@@ -65,7 +68,11 @@ class UserProfileView extends StatelessWidget {
           body: SafeArea(
             child: Column(
               children: [
-                _UserProfileHeader(userName: userName, userId: userId),
+                _UserProfileHeader(
+                  userName: userName,
+                  userId: userId,
+                  onSwitchToPortfolio: onSwitchToPortfolio,
+                ),
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -162,10 +169,12 @@ class UserProfileView extends StatelessWidget {
 class _UserProfileHeader extends StatelessWidget {
   final String userName;
   final String userId;
+  final VoidCallback? onSwitchToPortfolio;
 
   const _UserProfileHeader({
     required this.userName,
     required this.userId,
+    this.onSwitchToPortfolio,
   });
 
   @override
@@ -378,6 +387,14 @@ class _UserProfileHeader extends StatelessWidget {
                       userPhoto: profileImage,
                     ),
                   ],
+                ),
+              ],
+              if (onSwitchToPortfolio != null) ...[
+                const SizedBox(height: 12),
+                PortfolioSwitchButton(
+                  target: ProfileSwitchTarget.portfolio,
+                  onPressed: onSwitchToPortfolio!,
+                  isDarkTheme: false,
                 ),
               ],
             ],

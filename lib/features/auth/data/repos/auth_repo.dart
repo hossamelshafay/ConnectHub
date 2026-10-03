@@ -1,12 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 
+import 'package:connecthub/features/profile/data/models/user_model.dart';
+
 abstract class AuthRepo {
   User? get currentUser;
   Future<User> signUp({
     required String name,
     required String email,
     required String password,
+    AccountType accountType = AccountType.personal,
   });
   Future<User> login({
     required String email,

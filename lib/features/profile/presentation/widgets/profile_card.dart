@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/features/portfolio/presentation/widgets/portfolio_switch_button.dart';
 
 class ProfileCard extends StatelessWidget {
   final User user;
@@ -20,6 +21,7 @@ class ProfileCard extends StatelessWidget {
   final VoidCallback? onLikedPosts;
   final VoidCallback? onFollowersTap;
   final VoidCallback? onFollowingTap;
+  final VoidCallback? onSwitchToPortfolio;
 
   const ProfileCard({
     super.key,
@@ -38,6 +40,7 @@ class ProfileCard extends StatelessWidget {
     this.onLikedPosts,
     this.onFollowersTap,
     this.onFollowingTap,
+    this.onSwitchToPortfolio,
   });
 
   Widget get _verticalDivider => Container(
@@ -282,6 +285,14 @@ class ProfileCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (onSwitchToPortfolio != null) ...[
+              const SizedBox(height: 12),
+              PortfolioSwitchButton(
+                target: ProfileSwitchTarget.portfolio,
+                onPressed: onSwitchToPortfolio!,
+                isDarkTheme: false,
+              ),
+            ],
           ],
         ],
       ),

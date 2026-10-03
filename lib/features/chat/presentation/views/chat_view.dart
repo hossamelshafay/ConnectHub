@@ -477,7 +477,12 @@ class _AppBarTitle extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Row(
           children: [
-            UserAvatar(name: peerName, size: 38, imageUrl: peerPhoto),
+            UserAvatarById(
+              userId: peerId,
+              fallbackName: peerName,
+              size: 38,
+              fallbackImageUrl: peerPhoto,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: StreamBuilder<Map<String, dynamic>>(

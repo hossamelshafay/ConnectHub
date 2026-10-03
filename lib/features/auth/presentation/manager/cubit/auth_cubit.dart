@@ -4,6 +4,7 @@ import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo_imp.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
+import 'package:connecthub/features/profile/data/models/user_model.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepo _authRepo;
@@ -57,6 +58,7 @@ class AuthCubit extends Cubit<AuthState> {
     required String name,
     required String email,
     required String password,
+    AccountType accountType = AccountType.personal,
   }) async {
     emit(AuthLoading());
     try {
@@ -64,6 +66,7 @@ class AuthCubit extends Cubit<AuthState> {
         name: name,
         email: email,
         password: password,
+        accountType: accountType,
       );
       emit(AuthAuthenticated(user));
     } on FirebaseAuthException catch (e) {

@@ -38,16 +38,20 @@ class _ManageAccountsBottomSheetState
     final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Handle bar
             Center(
               child: Container(
@@ -231,7 +235,8 @@ class _ManageAccountsBottomSheetState
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildCurrentAccountCard(
@@ -259,9 +264,10 @@ class _ManageAccountsBottomSheetState
         ),
         child: Row(
           children: [
-            UserAvatar(
-              name: account.displayName,
-              imageUrl: account.profileImage,
+            UserAvatarById(
+              userId: account.uid,
+              fallbackName: account.displayName,
+              fallbackImageUrl: account.profileImage,
               size: 46,
             ),
             const SizedBox(width: 14),
@@ -360,9 +366,10 @@ class _ManageAccountsBottomSheetState
         ),
         child: Row(
           children: [
-            UserAvatar(
-              name: account.displayName,
-              imageUrl: account.profileImage,
+            UserAvatarById(
+              userId: account.uid,
+              fallbackName: account.displayName,
+              fallbackImageUrl: account.profileImage,
               size: 44,
             ),
             const SizedBox(width: 14),

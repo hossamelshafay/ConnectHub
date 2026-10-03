@@ -108,6 +108,27 @@ service cloud.firestore {
         allow read:  if isSignedIn();
         allow write: if isSignedIn() && isOwner(userId);
       }
+
+      // ── portfolio sub-collections ────────────────────────────────────────────
+      match /projects/{projectId} {
+        allow read:  if isSignedIn();
+        allow write: if isSignedIn() && isOwner(userId);
+      }
+
+      match /experience/{experienceId} {
+        allow read:  if isSignedIn();
+        allow write: if isSignedIn() && isOwner(userId);
+      }
+
+      match /education/{educationId} {
+        allow read:  if isSignedIn();
+        allow write: if isSignedIn() && isOwner(userId);
+      }
+
+      match /certificates/{certificateId} {
+        allow read:  if isSignedIn();
+        allow write: if isSignedIn() && isOwner(userId);
+      }
     }
 
     // ── Posts ─────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 
 /// Gradient primary button with loading state.
@@ -182,6 +183,63 @@ class UserAvatar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Avatar widget that streams the latest profile image and name from Firestore in real-time.
+/// Ensures profile image updates immediately propagate everywhere.
+class UserAvatarById extends StatelessWidget {
+  final String userId;
+  final String fallbackName;
+  final double size;
+  final String? fallbackImageUrl;
+
+  const UserAvatarById({
+    super.key,
+    required this.userId,
+    required this.fallbackName,
+    this.size = 44,
+    this.fallbackImageUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (userId.isEmpty) {
+      return UserAvatar(
+        name: fallbackName,
+        size: size,
+        imageUrl: fallbackImageUrl,
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        String? imageUrl = fallbackImageUrl;
+        String name = fallbackName;
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          final streamedImage = data?['profileImage'] as String?;
+          if (streamedImage != null && streamedImage.isNotEmpty) {
+            imageUrl = streamedImage;
+          }
+          final streamedName = data?['name'] as String?;
+          if (streamedName != null && streamedName.isNotEmpty) {
+            name = streamedName;
+          }
+        }
+
+        return UserAvatar(
+          name: name,
+          size: size,
+          imageUrl: imageUrl,
+        );
+      },
     );
   }
 }

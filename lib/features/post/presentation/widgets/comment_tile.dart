@@ -61,7 +61,11 @@ class CommentTile extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    UserAvatar(name: userName, size: 32),
+                    UserAvatarById(
+                      userId: userId ?? '',
+                      fallbackName: userName,
+                      size: 32,
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       userName,

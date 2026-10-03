@@ -6,6 +6,8 @@ import 'package:connecthub/core/services/account_deletion_service.dart';
 import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo.dart';
 
+import 'package:connecthub/features/profile/data/models/user_model.dart';
+
 class AuthRepoImp implements AuthRepo {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,6 +23,7 @@ class AuthRepoImp implements AuthRepo {
     required String name,
     required String email,
     required String password,
+    AccountType accountType = AccountType.personal,
   }) async {
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -30,6 +33,12 @@ class AuthRepoImp implements AuthRepo {
     await credential.user?.updateDisplayName(name.trim());
     await credential.user?.reload();
 
+    final slugBase = name.trim().toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_-]'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    final initialSlug = slugBase.isNotEmpty ? slugBase : 'user';
+
     // Save user data to Firestore
     await _firestore.collection('users').doc(credential.user!.uid).set({
       'uid': credential.user!.uid,
@@ -38,6 +47,13 @@ class AuthRepoImp implements AuthRepo {
       'createdAt': FieldValue.serverTimestamp(),
       'followersCount': 0,
       'followingCount': 0,
+      'accountType': accountType.value,
+      'portfolioVersion': 1,
+      'portfolioSource': 'manual',
+      'portfolioCompleted': false,
+      'profileSlug': initialSlug,
+      'socialLinks': {},
+      'sectionVisibility': const SectionVisibilityModel().toMap(),
     });
 
     final user = _auth.currentUser ?? credential.user!;

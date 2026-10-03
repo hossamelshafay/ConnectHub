@@ -17,22 +17,34 @@ import 'package:connecthub/features/post/presentation/manager/cubit/post_action_
 
 class ProfileView extends StatelessWidget {
   final bool showBackButton;
+  final VoidCallback? onSwitchToPortfolio;
 
-  const ProfileView({super.key, this.showBackButton = false});
+  const ProfileView({
+    super.key,
+    this.showBackButton = false,
+    this.onSwitchToPortfolio,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ProfileCubit()..loadProfile(),
-      child: _ProfileViewBody(showBackButton: showBackButton),
+      child: _ProfileViewBody(
+        showBackButton: showBackButton,
+        onSwitchToPortfolio: onSwitchToPortfolio,
+      ),
     );
   }
 }
 
 class _ProfileViewBody extends StatelessWidget {
   final bool showBackButton;
+  final VoidCallback? onSwitchToPortfolio;
 
-  const _ProfileViewBody({this.showBackButton = false});
+  const _ProfileViewBody({
+    this.showBackButton = false,
+    this.onSwitchToPortfolio,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +234,7 @@ class _ProfileViewBody extends StatelessWidget {
                                 ),
                               );
                             },
+                            onSwitchToPortfolio: onSwitchToPortfolio,
                           ),
 
                           const SizedBox(height: 24),

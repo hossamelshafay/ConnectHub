@@ -24,6 +24,7 @@ class ConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final peerName = conversation.otherParticipantName(myUid);
     final peerPhoto = conversation.otherParticipantPhoto(myUid);
+    final peerId = conversation.otherParticipantId(myUid);
     final unread = conversation.myUnreadCount(myUid);
     final lastMsg = conversation.lastMessage;
     final isMyMessage =
@@ -41,7 +42,12 @@ class ConversationTile extends StatelessWidget {
         child: Row(
           children: [
             // Avatar
-            UserAvatar(name: peerName, size: 52, imageUrl: peerPhoto),
+            UserAvatarById(
+              userId: peerId,
+              fallbackName: peerName,
+              size: 52,
+              fallbackImageUrl: peerPhoto,
+            ),
             const SizedBox(width: 14),
 
             // Name + preview

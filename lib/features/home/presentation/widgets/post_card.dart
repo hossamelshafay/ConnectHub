@@ -105,7 +105,11 @@ class PostCard extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              UserAvatar(name: post.userName, size: 44),
+                              UserAvatarById(
+                                userId: post.userId,
+                                fallbackName: post.userName,
+                                size: 44,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -202,27 +206,27 @@ class PostCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: CachedNetworkImage(
-                        imageUrl: post.imageUrl!,
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) => Container(
-                          height: 200,
-                          color: AppColors.surfaceVariant,
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primary,
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: CachedNetworkImage(
+                          imageUrl: post.imageUrl!,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            color: AppColors.surfaceVariant,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
-                        ),
-                        errorWidget: (_, _, _) => Container(
-                          height: 200,
-                          color: AppColors.surfaceVariant,
-                          child: const Icon(
-                            Icons.broken_image_outlined,
-                            color: AppColors.textHint,
+                          errorWidget: (_, _, _) => Container(
+                            color: AppColors.surfaceVariant,
+                            child: const Icon(
+                              Icons.broken_image_outlined,
+                              color: AppColors.textHint,
+                            ),
                           ),
                         ),
                       ),
@@ -231,29 +235,34 @@ class PostCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   const Divider(color: AppColors.divider, height: 1),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _ActionButton(
-                        icon: isLiked ? Icons.favorite : Icons.favorite_border,
-                        label: '${post.likeCount}',
-                        color: isLiked ? AppColors.accent : AppColors.textHint,
-                        onTap: onLike,
-                      ),
-                      const SizedBox(width: 20),
-                      _ActionButton(
-                        icon: Icons.chat_bubble_outline,
-                        label: '${post.commentCount}',
-                        color: AppColors.textHint,
-                        onTap: onComment,
-                      ),
-                      const SizedBox(width: 20),
-                      _ActionButton(
-                        icon: Icons.share_outlined,
-                        label: 'Share',
-                        color: AppColors.textHint,
-                        onTap: () => _openShareSheet(context),
-                      ),
-                    ],
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ActionButton(
+                          icon: isLiked ? Icons.favorite : Icons.favorite_border,
+                          label: '${post.likeCount}',
+                          color: isLiked ? AppColors.accent : AppColors.textHint,
+                          onTap: onLike,
+                        ),
+                        const SizedBox(width: 20),
+                        _ActionButton(
+                          icon: Icons.chat_bubble_outline,
+                          label: '${post.commentCount}',
+                          color: AppColors.textHint,
+                          onTap: onComment,
+                        ),
+                        const SizedBox(width: 20),
+                        _ActionButton(
+                          icon: Icons.share_outlined,
+                          label: 'Share',
+                          color: AppColors.textHint,
+                          onTap: () => _openShareSheet(context),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

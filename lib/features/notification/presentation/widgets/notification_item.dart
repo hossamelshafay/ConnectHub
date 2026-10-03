@@ -31,10 +31,11 @@ class NotificationItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar
-            UserAvatar(
-              name: notification.senderName,
+            UserAvatarById(
+              userId: notification.senderId,
+              fallbackName: notification.senderName,
               size: 46,
-              imageUrl: notification.senderPhoto,
+              fallbackImageUrl: notification.senderPhoto,
             ),
             const SizedBox(width: 12),
 

@@ -5,6 +5,7 @@ import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
 import 'package:connecthub/features/home/presentation/views/home_view.dart';
+import 'package:connecthub/features/auth/presentation/views/account_type_selection_view.dart';
 
 class SignUpView extends StatefulWidget {
   const SignUpView({super.key});
@@ -186,21 +187,21 @@ class _SignUpViewState extends State<SignUpView>
                         },
                       ),
                       const SizedBox(height: 32),
-                      BlocBuilder<AuthCubit, AuthState>(
-                        builder: (context, state) {
-                          return PrimaryButton(
-                            text: 'Create Account',
-                            isLoading: state is AuthLoading,
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                context.read<AuthCubit>().signUp(
-                                      name: _nameController.text,
-                                      email: _emailController.text,
-                                      password: _passwordController.text,
-                                    );
-                              }
-                            },
-                          );
+                      PrimaryButton(
+                        text: 'Continue',
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AccountTypeSelectionView(
+                                  name: _nameController.text.trim(),
+                                  email: _emailController.text.trim(),
+                                  password: _passwordController.text,
+                                ),
+                              ),
+                            );
+                          }
                         },
                       ),
                       const SizedBox(height: 24),

@@ -24,19 +24,30 @@ class CertificateModel {
 
   factory CertificateModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+    return CertificateModel.fromMap(data, id: doc.id);
+  }
+
+  factory CertificateModel.fromMap(Map<String, dynamic> data, {String? id}) {
+    DateTime? parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
     return CertificateModel(
-      id: doc.id,
+      id: id ?? (data['id'] as String? ?? ''),
       title: data['title'] as String? ?? '',
       issuingOrganization: data['issuingOrganization'] as String? ?? '',
-      issueDate: (data['issueDate'] as Timestamp?)?.toDate(),
-      expirationDate: (data['expirationDate'] as Timestamp?)?.toDate(),
+      issueDate: parseDate(data['issueDate']),
+      expirationDate: parseDate(data['expirationDate']),
       credentialId: data['credentialId'] as String?,
       credentialUrl: data['credentialUrl'] as String?,
       isVisible: (data['isVisible'] as bool?) ?? true,
     );
   }
 
-  Map<String, dynamic> toMap() => {
+  Map<String, dynamic> toMap({bool includeId = false}) => {
+        if (includeId) 'id': id,
         'title': title,
         'issuingOrganization': issuingOrganization,
         if (issueDate != null) 'issueDate': Timestamp.fromDate(issueDate!),

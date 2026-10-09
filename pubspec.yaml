@@ -35,12 +35,15 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   url_launcher: ^6.3.1
   file_picker: ^13.1.0
+  google_fonts: ^8.2.1
+  share_plus: ^13.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  googleapis_auth: ^2.3.4
 
 flutter:
   uses-material-design: true

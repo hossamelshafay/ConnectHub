@@ -28,13 +28,23 @@ class ExperienceModel {
 
   factory ExperienceModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+    return ExperienceModel.fromMap(data, id: doc.id);
+  }
+
+  factory ExperienceModel.fromMap(Map<String, dynamic> data, {String? id}) {
+    DateTime? parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
     return ExperienceModel(
-      id: doc.id,
+      id: id ?? (data['id'] as String? ?? ''),
       company: data['company'] as String? ?? '',
       role: data['role'] as String? ?? '',
       location: data['location'] as String?,
-      startDate: (data['startDate'] as Timestamp?)?.toDate(),
-      endDate: (data['endDate'] as Timestamp?)?.toDate(),
+      startDate: parseDate(data['startDate']),
+      endDate: parseDate(data['endDate']),
       isCurrent: (data['isCurrent'] as bool?) ?? false,
       description: data['description'] as String? ?? '',
       skills: List<String>.from(data['skills'] ?? []),
@@ -42,7 +52,8 @@ class ExperienceModel {
     );
   }
 
-  Map<String, dynamic> toMap() => {
+  Map<String, dynamic> toMap({bool includeId = false}) => {
+        if (includeId) 'id': id,
         'company': company,
         'role': role,
         if (location != null) 'location': location,

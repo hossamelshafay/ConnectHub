@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,6 +11,7 @@ import 'features/chatbot/presentation/manager/cubit/chatbot_cubit.dart';
 import 'features/notification/presentation/manager/cubit/notification_cubit.dart';
 import 'features/chat/presentation/manager/cubit/conversations_cubit.dart';
 import 'features/splash/presentation/views/splash_view.dart';
+import 'web_portfolio/portfolio_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,12 +20,14 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ),
-  );
+  if (!kIsWeb) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+  }
 
   runApp(const ConnectHubApp());
 }
@@ -33,6 +37,15 @@ class ConnectHubApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return MaterialApp(
+        title: 'ConnectHub | Portfolio',
+        debugShowCheckedModeBanner: false,
+        onGenerateRoute: PortfolioRouter.onGenerateRoute,
+        initialRoute: PortfolioRouter.rootRoute,
+      );
+    }
+
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => AuthCubit()),
@@ -50,3 +63,4 @@ class ConnectHubApp extends StatelessWidget {
     );
   }
 }
+

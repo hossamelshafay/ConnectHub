@@ -196,6 +196,54 @@ service cloud.firestore {
       }
     }
 
+    // ── Public Portfolios ──────────────────────────────────────────────────────
+    match /public_portfolios/{portfolioId} {
+      // 1. Public reading is allowed for everyone (unauthenticated web guests & app users).
+      allow read: if true;
+
+      // 2. Ownership verification:
+      // Case A: The portfolioId equals the authenticated user's UID.
+      function isOwnerByUid() {
+        return request.auth.uid == portfolioId;
+      }
+
+      // Case B: The portfolioId equals the user's username or profileSlug in /users/{request.auth.uid}.
+      function isOwnerByUsername() {
+        let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+        return exists(userDocPath) && (
+          get(userDocPath).data.get('username', '') == portfolioId ||
+          (
+            get(userDocPath).data.get('username', '') is string &&
+            get(userDocPath).data.get('username', '').lower() == portfolioId.lower()
+          ) ||
+          get(userDocPath).data.get('profileSlug', '') == portfolioId ||
+          (
+            get(userDocPath).data.get('profileSlug', '') is string &&
+            get(userDocPath).data.get('profileSlug', '').lower() == portfolioId.lower()
+          )
+        );
+      }
+
+      function isPortfolioOwner() {
+        return isOwnerByUid() || isOwnerByUsername();
+      }
+
+      // 3. User may ONLY create a public portfolio document for their own UID or registered username.
+      allow create: if isSignedIn() &&
+                       request.resource.data.uid == request.auth.uid &&
+                       isPortfolioOwner();
+
+      // 4. User may ONLY update their own existing public portfolio document.
+      allow update: if isSignedIn() &&
+                       resource.data.uid == request.auth.uid &&
+                       request.resource.data.uid == request.auth.uid &&
+                       isPortfolioOwner();
+
+      // 5. User may ONLY delete their own portfolio document.
+      allow delete: if isSignedIn() &&
+                       resource.data.uid == request.auth.uid;
+    }
+
     // ── Collection Group Rules (required for collectionGroup queries) ────────
     match /{path=**}/comments/{commentId} {
       allow read: if isSignedIn();

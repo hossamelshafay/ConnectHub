@@ -28,13 +28,23 @@ class EducationModel {
 
   factory EducationModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+    return EducationModel.fromMap(data, id: doc.id);
+  }
+
+  factory EducationModel.fromMap(Map<String, dynamic> data, {String? id}) {
+    DateTime? parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
     return EducationModel(
-      id: doc.id,
+      id: id ?? (data['id'] as String? ?? ''),
       institution: data['institution'] as String? ?? '',
       degree: data['degree'] as String? ?? '',
       fieldOfStudy: data['fieldOfStudy'] as String?,
-      startDate: (data['startDate'] as Timestamp?)?.toDate(),
-      endDate: (data['endDate'] as Timestamp?)?.toDate(),
+      startDate: parseDate(data['startDate']),
+      endDate: parseDate(data['endDate']),
       grade: data['grade'] as String?,
       activities: data['activities'] as String?,
       description: data['description'] as String?,
@@ -42,7 +52,8 @@ class EducationModel {
     );
   }
 
-  Map<String, dynamic> toMap() => {
+  Map<String, dynamic> toMap({bool includeId = false}) => {
+        if (includeId) 'id': id,
         'institution': institution,
         'degree': degree,
         if (fieldOfStudy != null) 'fieldOfStudy': fieldOfStudy,

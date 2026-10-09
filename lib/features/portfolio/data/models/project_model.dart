@@ -30,22 +30,33 @@ class ProjectModel {
 
   factory ProjectModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+    return ProjectModel.fromMap(data, id: doc.id);
+  }
+
+  factory ProjectModel.fromMap(Map<String, dynamic> data, {String? id}) {
+    DateTime? parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
     return ProjectModel(
-      id: doc.id,
+      id: id ?? (data['id'] as String? ?? ''),
       title: data['title'] as String? ?? '',
       description: data['description'] as String? ?? '',
       technologies: List<String>.from(data['technologies'] ?? []),
       projectUrl: data['projectUrl'] as String?,
       githubUrl: data['githubUrl'] as String?,
       imageUrl: data['imageUrl'] as String?,
-      startDate: (data['startDate'] as Timestamp?)?.toDate(),
-      endDate: (data['endDate'] as Timestamp?)?.toDate(),
+      startDate: parseDate(data['startDate']),
+      endDate: parseDate(data['endDate']),
       isFeatured: (data['isFeatured'] as bool?) ?? false,
       isVisible: (data['isVisible'] as bool?) ?? true,
     );
   }
 
-  Map<String, dynamic> toMap() => {
+  Map<String, dynamic> toMap({bool includeId = false}) => {
+        if (includeId) 'id': id,
         'title': title,
         'description': description,
         'technologies': technologies,

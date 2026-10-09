@@ -203,6 +203,9 @@ class UserModel {
   final int portfolioVersion;
   final SectionVisibilityModel sectionVisibility;
 
+  final String? resumeUrl;
+  final String? publicPortfolioUrl;
+
   // ── Social Metrics ───────────────────────────────────────────────────────
   final int followersCount;
   final int followingCount;
@@ -228,6 +231,8 @@ class UserModel {
     this.portfolioCompleted = false,
     this.portfolioVersion = 1,
     this.sectionVisibility = const SectionVisibilityModel(),
+    this.resumeUrl,
+    this.publicPortfolioUrl,
     this.followersCount = 0,
     this.followingCount = 0,
     this.createdAt,
@@ -278,6 +283,8 @@ class UserModel {
       portfolioCompleted: (data['portfolioCompleted'] as bool?) ?? false,
       portfolioVersion: (data['portfolioVersion'] as int?) ?? 1,
       sectionVisibility: SectionVisibilityModel.fromMap(rawVis),
+      resumeUrl: data['resumeUrl'] as String? ?? data['cvUrl'] as String?,
+      publicPortfolioUrl: data['publicPortfolioUrl'] as String?,
       followersCount: (data['followersCount'] as int?) ?? 0,
       followingCount: (data['followingCount'] as int?) ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
@@ -305,9 +312,65 @@ class UserModel {
       'portfolioCompleted': portfolioCompleted,
       'portfolioVersion': portfolioVersion,
       'sectionVisibility': sectionVisibility.toMap(),
+      if (resumeUrl != null) 'resumeUrl': resumeUrl,
+      if (publicPortfolioUrl != null) 'publicPortfolioUrl': publicPortfolioUrl,
       'followersCount': followersCount,
       'followingCount': followingCount,
     };
+  }
+
+  UserModel copyWith({
+    String? uid,
+    String? name,
+    String? email,
+    String? username,
+    String? bio,
+    String? profileImage,
+    AccountType? accountType,
+    String? headline,
+    String? about,
+    String? location,
+    String? phone,
+    SocialLinksModel? socialLinks,
+    String? githubUsername,
+    String? profileSlug,
+    List<String>? skills,
+    PortfolioSource? portfolioSource,
+    bool? portfolioCompleted,
+    int? portfolioVersion,
+    SectionVisibilityModel? sectionVisibility,
+    String? resumeUrl,
+    String? publicPortfolioUrl,
+    int? followersCount,
+    int? followingCount,
+    DateTime? createdAt,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      username: username ?? this.username,
+      bio: bio ?? this.bio,
+      profileImage: profileImage ?? this.profileImage,
+      accountType: accountType ?? this.accountType,
+      headline: headline ?? this.headline,
+      about: about ?? this.about,
+      location: location ?? this.location,
+      phone: phone ?? this.phone,
+      socialLinks: socialLinks ?? this.socialLinks,
+      githubUsername: githubUsername ?? this.githubUsername,
+      profileSlug: profileSlug ?? this.profileSlug,
+      skills: skills ?? this.skills,
+      portfolioSource: portfolioSource ?? this.portfolioSource,
+      portfolioCompleted: portfolioCompleted ?? this.portfolioCompleted,
+      portfolioVersion: portfolioVersion ?? this.portfolioVersion,
+      sectionVisibility: sectionVisibility ?? this.sectionVisibility,
+      resumeUrl: resumeUrl ?? this.resumeUrl,
+      publicPortfolioUrl: publicPortfolioUrl ?? this.publicPortfolioUrl,
+      followersCount: followersCount ?? this.followersCount,
+      followingCount: followingCount ?? this.followingCount,
+      createdAt: createdAt ?? this.createdAt,
+    );
   }
 
   static String? _extractGithubUsername(String? url) {

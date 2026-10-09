@@ -20,6 +20,7 @@ import 'package:connecthub/features/portfolio_import/presentation/widgets/projec
 import 'package:connecthub/features/portfolio_import/presentation/widgets/education_form_sheet.dart';
 import 'package:connecthub/features/portfolio_import/presentation/widgets/certificate_form_sheet.dart';
 import 'package:connecthub/features/portfolio_import/presentation/widgets/skills_editor_sheet.dart';
+import 'package:connecthub/features/generate_website/presentation/widgets/generate_website_button.dart';
 
 /// The Professional Portfolio View (Phase 1).
 ///
@@ -98,12 +99,15 @@ class _PortfolioViewBody extends StatelessWidget {
               final user = state.user;
               return Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.share_outlined,
-                        color: Colors.white, size: 20),
-                    tooltip: 'Share Portfolio',
-                    onPressed: () => _shareProfile(context, user),
-                  ),
+                  if (isCurrentUser)
+                    GenerateWebsiteButton(user: user, compact: true)
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.share_outlined,
+                          color: Colors.white, size: 20),
+                      tooltip: 'Share Portfolio',
+                      onPressed: () => _shareProfile(context, user),
+                    ),
                   if (isCurrentUser)
                     IconButton(
                       icon: const Icon(Icons.tune_rounded,

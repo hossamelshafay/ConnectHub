@@ -22,6 +22,8 @@ class FollowCubit extends Cubit<FollowState> {
   String? _profileImage;
   String? _username;
   String? _bio;
+  bool _websiteGenerated = false;
+  String? _websiteUrl;
 
   // Ensures FollowLoaded is only emitted after the user document has loaded
   // so followers/following counts are accurate on first render.
@@ -72,6 +74,8 @@ class FollowCubit extends Cubit<FollowState> {
           _profileImage = data['profileImage'] as String?;
           _username = data['username'] as String?;
           _bio = data['bio'] as String?;
+          _websiteGenerated = (data['websiteGenerated'] as bool?) ?? false;
+          _websiteUrl = data['websiteUrl'] as String? ?? data['publicPortfolioUrl'] as String?;
         }
         _userDocInitialized = true;
         _emitLoaded();
@@ -148,6 +152,8 @@ class FollowCubit extends Cubit<FollowState> {
         profileImage: _profileImage,
         username: _username,
         bio: _bio,
+        websiteGenerated: _websiteGenerated,
+        websiteUrl: _websiteUrl,
       ),
     );
   }

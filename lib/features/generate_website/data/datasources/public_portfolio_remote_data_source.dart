@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:connecthub/core/config/app_config.dart';
+import 'package:connecthub/core/config/portfolio_config.dart';
 import 'package:connecthub/features/profile/data/models/user_model.dart';
 import 'package:connecthub/features/portfolio/data/models/project_model.dart';
 import 'package:connecthub/features/portfolio/data/models/experience_model.dart';
@@ -80,8 +80,8 @@ class PublicPortfolioRemoteDataSourceImpl implements PublicPortfolioRemoteDataSo
         ? rawUsername.toLowerCase()
         : user.uid;
 
-    // 4. Generate permanent public URL
-    final publicUrl = AppConfig.buildPortfolioUrl(docId);
+    // 4. Generate permanent public URL using PortfolioConfig
+    final publicUrl = PortfolioConfig.buildUrl(docId);
 
     // 5. Check if document already exists
     final targetDocRef = _firestore.collection('public_portfolios').doc(docId);
@@ -121,8 +121,11 @@ class PublicPortfolioRemoteDataSourceImpl implements PublicPortfolioRemoteDataSo
       SetOptions(merge: true),
     );
 
-    // 8. Save generated URL back in users/{uid}
+    // 8. Save generated metadata in users/{uid}
     await _firestore.collection('users').doc(user.uid).set({
+      'websiteGenerated': true,
+      'websiteUrl': publicUrl,
+      'generatedAt': FieldValue.serverTimestamp(),
       'publicPortfolioUrl': publicUrl,
       'publicPortfolioDocId': docId,
       'publicPortfolioUpdatedAt': FieldValue.serverTimestamp(),

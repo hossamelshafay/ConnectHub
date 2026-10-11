@@ -44,6 +44,37 @@ class _PostDetailsViewState extends State<PostDetailsView> {
   bool _isProcessing = false;
   String? _editingCommentId;
   String? _editingCommentOriginalText;
+  bool? _optimisticLiked;
+  int? _optimisticLikeCount;
+
+  void _handleToggleLike(
+    String currentUserId,
+    List<String> serverLikes,
+    int serverCount,
+  ) {
+    if (currentUserId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please log in to like posts.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+    final currentlyLiked =
+        _optimisticLiked ?? serverLikes.contains(currentUserId);
+    final count = _optimisticLikeCount ?? serverCount;
+    setState(() {
+      _optimisticLiked = !currentlyLiked;
+      _optimisticLikeCount =
+          (_optimisticLiked! ? count + 1 : count - 1).clamp(0, 999999);
+    });
+    widget.postRepo.toggleLike(widget.postId, currentUserId);
+  }
 
   @override
   void dispose() {
@@ -172,443 +203,593 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                           color: AppColors.primary),
                     );
                   }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.cloud_off_rounded,
+                                size: 48, color: AppColors.error),
+                            const SizedBox(height: 16),
+                            Text('Failed to load post',
+                                style: AppTextStyles.headline3),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${snapshot.error}'.replaceFirst('Exception: ', ''),
+                              style: AppTextStyles.body2
+                                  .copyWith(color: AppColors.textSecondary),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: () => setState(() {}),
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   if (!snapshot.hasData || !snapshot.data!.exists) {
-                    return const Center(
-                        child: Text('Post not found.',
-                            style: AppTextStyles.body2));
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.article_outlined,
+                                size: 48, color: AppColors.textHint),
+                            const SizedBox(height: 12),
+                            const Text('Post not found.',
+                                style: AppTextStyles.body1),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Go Back'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   final data =
                       snapshot.data!.data() as Map<String, dynamic>;
                   final postOwnerId = data['userId'] as String? ?? '';
-                  final likes = List<String>.from(data['likes'] ?? []);
-                  final isLiked = likes.contains(currentUserId);
-                  final likeCount = data['likeCount'] ?? 0;
+                  final serverLikes = List<String>.from(data['likes'] ?? []);
+                  final serverLikeCount =
+                      (data['likeCount'] as num?)?.toInt() ?? serverLikes.length;
+
+                  // Clear optimistic state when server state matches
+                  if (_optimisticLiked != null &&
+                      serverLikes.contains(currentUserId) == _optimisticLiked) {
+                    _optimisticLiked = null;
+                    _optimisticLikeCount = null;
+                  }
+
+                  final isLiked =
+                      _optimisticLiked ?? serverLikes.contains(currentUserId);
+                  final likeCount = _optimisticLikeCount ?? serverLikeCount;
                   final createdAt =
                       (data['createdAt'] as Timestamp?)?.toDate() ??
                           DateTime.now();
 
-                  return SingleChildScrollView(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: widget.postRepo.getCommentsStream(widget.postId),
+                    builder: (context, commSnap) {
+                      final commentCount = commSnap.hasData
+                          ? commSnap.data!.docs.length
+                          : ((data['commentCount'] as num?)?.toInt() ?? 0);
+
+                      return SingleChildScrollView(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () {
-                                  final postOwnerId =
-                                      data['userId'] as String? ?? '';
-                                  final postOwnerName =
-                                      data['userName'] as String? ?? 'Unknown';
-                                  if (postOwnerId.isNotEmpty) {
-                                    ProfileNavigationHelper.openUserProfile(
-                                      context,
-                                      userId: postOwnerId,
-                                      userName: postOwnerName,
-                                    );
-                                  }
-                                },
-                                child: Row(
-                                  children: [
-                                    UserAvatarById(
-                                      userId: postOwnerId,
-                                      fallbackName: data['userName'] ?? '',
-                                      size: 50,
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            data['userName'] ?? 'Unknown',
-                                            style: AppTextStyles.body1.copyWith(
-                                                fontWeight: FontWeight.w600),
-                                          ),
-                                          Row(
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () {
+                                      final postOwnerId =
+                                          data['userId'] as String? ?? '';
+                                      final postOwnerName =
+                                          data['userName'] as String? ?? 'Unknown';
+                                      if (postOwnerId.isNotEmpty) {
+                                        ProfileNavigationHelper.openUserProfile(
+                                          context,
+                                          userId: postOwnerId,
+                                          userName: postOwnerName,
+                                        );
+                                      }
+                                    },
+                                    child: Row(
+                                      children: [
+                                        UserAvatarById(
+                                          userId: postOwnerId,
+                                          fallbackName: data['userName'] ?? '',
+                                          size: 50,
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                DateFormat(
-                                                        'MMM d, yyyy • h:mm a')
-                                                    .format(createdAt),
-                                                style: AppTextStyles.caption,
+                                                data['userName'] ?? 'Unknown',
+                                                style: AppTextStyles.body1.copyWith(
+                                                    fontWeight: FontWeight.w600),
                                               ),
-                                              if (data['lastEditedAt'] !=
-                                                  null) ...[
-                                                const SizedBox(width: 4),
-                                                const Text('•',
-                                                    style:
-                                                        AppTextStyles.caption),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  'Edited',
-                                                  style: AppTextStyles.caption
-                                                      .copyWith(
-                                                    fontStyle: FontStyle.italic,
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    DateFormat(
+                                                            'MMM d, yyyy • h:mm a')
+                                                        .format(createdAt),
+                                                    style: AppTextStyles.caption,
                                                   ),
-                                                ),
-                                              ],
+                                                  if (data['lastEditedAt'] !=
+                                                      null) ...[
+                                                    const SizedBox(width: 4),
+                                                    const Text('•',
+                                                        style:
+                                                            AppTextStyles.caption),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Edited',
+                                                      style: AppTextStyles.caption
+                                                          .copyWith(
+                                                        fontStyle: FontStyle.italic,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            if (data['userId'] == currentUserId)
-                              PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert,
-                                    color: AppColors.textSecondary),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                onSelected: (value) {
-                                  if (value == 'edit') {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => EditPostView(
-                                          postId: widget.postId,
-                                          initialTitle: data['title'] ?? '',
-                                          initialDescription:
-                                              data['description'] ?? '',
-                                          initialImageUrl: data['imageUrl'],
-                                          initialDeleteHash: data['deleteHash'],
                                         ),
-                                      ),
-                                    );
-                                  } else if (value == 'delete') {
-                                    DeletePostDialog.show(
-                                      context,
-                                      description: data['description'] ?? '',
-                                      onConfirm: () async {
-                                        final cubit = PostActionCubit();
-                                        try {
-                                          await cubit.deletePost(
-                                            postId: widget.postId,
-                                            deleteHash: data['deleteHash'],
-                                          );
-                                          if (context.mounted) {
-                                            Navigator.pop(
-                                                context); // Pop PostDetailsView back to caller
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: const Text(
-                                                    'Post deleted successfully!'),
-                                                backgroundColor:
-                                                    AppColors.success,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        } catch (e) {
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Text(e.toString()),
-                                                backgroundColor:
-                                                    AppColors.error,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
-                                    );
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.edit_outlined,
-                                            size: 20,
-                                            color: AppColors.textPrimary),
-                                        SizedBox(width: 12),
-                                        Text('Edit Post'),
                                       ],
                                     ),
                                   ),
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete_outline,
-                                            size: 20, color: AppColors.error),
-                                        SizedBox(width: 12),
-                                        Text('Delete Post',
-                                            style: TextStyle(
-                                                color: AppColors.error)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Text(data['title'] ?? '', style: AppTextStyles.headline1),
-                        const SizedBox(height: 12),
-                        MentionText(
-                          text: data['description'] ?? '',
-                          style: AppTextStyles.body1,
-                        ),
-                        if (data['imageUrl'] != null &&
-                            (data['imageUrl'] as String).isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: AspectRatio(
-                              aspectRatio: 16 / 9,
-                              child: CachedNetworkImage(
-                                imageUrl: data['imageUrl'],
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                placeholder: (_, _) => Container(
-                                  color: AppColors.surfaceVariant,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
                                 ),
-                                errorWidget: (_, _, _) => Container(
-                                  color: AppColors.surfaceVariant,
-                                  child: const Icon(Icons.broken_image_outlined,
-                                      color: AppColors.textHint, size: 40),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Row(
-                              children: [
-                              GestureDetector(
-                                onTap: () {
-                                  widget.postRepo.toggleLike(
-                                      widget.postId, currentUserId);
-                                },
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      isLiked
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color: isLiked
-                                          ? AppColors.accent
-                                          : AppColors.textHint,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '$likeCount',
-                                      style: AppTextStyles.body1.copyWith(
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () =>
-                                    _showLikedBySheet(context, likes),
-                                child: Text(
-                                  'Liked By',
-                                  style: AppTextStyles.body2.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              const Icon(Icons.chat_bubble_outline,
-                                  color: AppColors.textHint, size: 22),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${data['commentCount'] ?? 0}',
-                                style: AppTextStyles.body1
-                                    .copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(width: 16),
-                              InkWell(
-                                onTap: () {
-                                  final user =
-                                      FirebaseAuth.instance.currentUser;
-                                  if (user == null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                            'Please log in to share posts.'),
-                                        backgroundColor: AppColors.error,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                if (data['userId'] == currentUserId)
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert,
+                                        color: AppColors.textSecondary),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12)),
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => EditPostView(
+                                              postId: widget.postId,
+                                              initialTitle: data['title'] ?? '',
+                                              initialDescription:
+                                                  data['description'] ?? '',
+                                              initialImageUrl: data['imageUrl'],
+                                              initialDeleteHash: data['deleteHash'],
+                                            ),
+                                          ),
+                                        );
+                                      } else if (value == 'delete') {
+                                        DeletePostDialog.show(
+                                          context,
+                                          description: data['description'] ?? '',
+                                          onConfirm: () async {
+                                            final cubit = PostActionCubit();
+                                            try {
+                                              await cubit.deletePost(
+                                                postId: widget.postId,
+                                                deleteHash: data['deleteHash'],
+                                              );
+                                              if (context.mounted) {
+                                                Navigator.pop(
+                                                    context); // Pop PostDetailsView back to caller
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: const Text(
+                                                        'Post deleted successfully!'),
+                                                    backgroundColor:
+                                                        AppColors.success,
+                                                    behavior:
+                                                        SnackBarBehavior.floating,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(12),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(e.toString()),
+                                                    backgroundColor:
+                                                        AppColors.error,
+                                                    behavior:
+                                                        SnackBarBehavior.floating,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(12),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                        );
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.edit_outlined,
+                                                size: 20,
+                                                color: AppColors.textPrimary),
+                                            SizedBox(width: 12),
+                                            Text('Edit Post'),
+                                          ],
                                         ),
                                       ),
-                                    );
-                                    return;
-                                  }
-                                  final postObj =
-                                      PostModel.fromDoc(snapshot.data!);
-                                  SharePostSheet.show(
-                                    context,
-                                    post: postObj,
-                                    myUid: user.uid,
-                                    myName: (user.displayName != null &&
-                                            user.displayName!.trim().isNotEmpty)
-                                        ? user.displayName!.trim()
-                                        : 'User',
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 4),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.share_outlined,
-                                          color: AppColors.textHint, size: 22),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Share',
-                                        style: TextStyle(
-                                          color: AppColors.textHint,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete_outline,
+                                                size: 20, color: AppColors.error),
+                                            SizedBox(width: 12),
+                                            Text('Delete Post',
+                                                style: TextStyle(
+                                                    color: AppColors.error)),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Text(data['title'] ?? '', style: AppTextStyles.headline1),
+                            const SizedBox(height: 12),
+                            MentionText(
+                              text: data['description'] ?? '',
+                              style: AppTextStyles.body1,
+                            ),
+                            if (data['imageUrl'] != null &&
+                                (data['imageUrl'] as String).isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: AspectRatio(
+                                  aspectRatio: 16 / 9,
+                                  child: CachedNetworkImage(
+                                    imageUrl: data['imageUrl'],
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, _) => Container(
+                                      color: AppColors.surfaceVariant,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (_, _, _) => Container(
+                                      color: AppColors.surfaceVariant,
+                                      child: const Icon(Icons.broken_image_outlined,
+                                          color: AppColors.textHint, size: 40),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                        Text('Comments', style: AppTextStyles.headline3),
-                        const SizedBox(height: 12),
-                        StreamBuilder<QuerySnapshot>(
-                          stream: widget.postRepo.getCommentsStream(
-                              widget.postId),
-                          builder: (context, commSnap) {
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceVariant,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => _handleToggleLike(
+                                        currentUserId, serverLikes, serverLikeCount),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          isLiked
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          color: isLiked
+                                              ? AppColors.accent
+                                              : AppColors.textHint,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '$likeCount',
+                                          style: AppTextStyles.body1.copyWith(
+                                              fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () =>
+                                        _showLikedBySheet(context, serverLikes),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Liked By',
+                                        style: AppTextStyles.body2.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.chat_bubble_outline,
+                                          color: AppColors.textHint, size: 22),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '$commentCount',
+                                        style: AppTextStyles.body1.copyWith(
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 16),
+                                  InkWell(
+                                    onTap: () {
+                                      final user =
+                                          FirebaseAuth.instance.currentUser;
+                                      if (user == null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: const Text(
+                                                'Please log in to share posts.'),
+                                            backgroundColor: AppColors.error,
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      final postObj =
+                                          PostModel.fromDoc(snapshot.data!);
+                                      SharePostSheet.show(
+                                        context,
+                                        post: postObj,
+                                        myUid: user.uid,
+                                        myName: (user.displayName != null &&
+                                                user.displayName!.trim().isNotEmpty)
+                                            ? user.displayName!.trim()
+                                            : 'User',
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 4),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.share_outlined,
+                                              color: AppColors.textHint, size: 22),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Share',
+                                            style: TextStyle(
+                                              color: AppColors.textHint,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text('Comments', style: AppTextStyles.headline3),
+                            const SizedBox(height: 12),
                             if (commSnap.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
+                                    ConnectionState.waiting &&
+                                !commSnap.hasData)
+                              const Center(
                                 child: Padding(
-                                  padding: EdgeInsets.all(20),
+                                  padding: EdgeInsets.all(24),
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: AppColors.primary,
                                   ),
                                 ),
-                              );
-                            }
-                            final comments = commSnap.data?.docs ?? [];
-                            if (comments.isEmpty) {
-                              return const Padding(
+                              )
+                            else if (commSnap.hasError)
+                              Padding(
                                 padding:
-                                    EdgeInsets.symmetric(vertical: 20),
+                                    const EdgeInsets.symmetric(vertical: 24),
                                 child: Center(
-                                  child: Text(
-                                    'No comments yet. Be the first!',
-                                    style: AppTextStyles.body2,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.error_outline_rounded,
+                                          size: 32, color: AppColors.error),
+                                      const SizedBox(height: 8),
+                                      const Text('Could not load comments.',
+                                          style: AppTextStyles.body2),
+                                      const SizedBox(height: 12),
+                                      TextButton.icon(
+                                        onPressed: () => setState(() {}),
+                                        icon: const Icon(Icons.refresh_rounded,
+                                            size: 16),
+                                        label: const Text('Retry'),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              );
-                            }
-                            return ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: comments.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final commentDoc = comments[index];
-                                final commentId = commentDoc.id;
-                                final comm = commentDoc.data()
-                                    as Map<String, dynamic>;
-                                final commentUserId =
-                                    comm['userId'] as String? ?? '';
-                                final commentText =
-                                    comm['text'] as String? ?? '';
-                                final commentCreatedAt =
-                                    (comm['createdAt'] as Timestamp?)
+                              )
+                            else if (commSnap.data == null ||
+                                commSnap.data!.docs.isEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 36),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.surfaceVariant,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.chat_bubble_outline_rounded,
+                                          color: AppColors.textHint,
+                                          size: 32,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No comments yet',
+                                        style: AppTextStyles.body1.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Be the first to share your thoughts!',
+                                        style: AppTextStyles.caption
+                                            .copyWith(color: AppColors.textHint),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else ...[
+                              Builder(
+                                builder: (context) {
+                                  final sortedComments =
+                                      List<QueryDocumentSnapshot>.from(
+                                          commSnap.data!.docs);
+                                  sortedComments.sort((a, b) {
+                                    final aData =
+                                        a.data() as Map<String, dynamic>? ?? {};
+                                    final bData =
+                                        b.data() as Map<String, dynamic>? ?? {};
+                                    final aDate = (aData['createdAt']
+                                                as Timestamp?)
                                             ?.toDate() ??
                                         DateTime.now();
-                                final commentLastEditedAt =
-                                    (comm['lastEditedAt'] as Timestamp?)
-                                        ?.toDate();
+                                    final bDate = (bData['createdAt']
+                                                as Timestamp?)
+                                            ?.toDate() ??
+                                        DateTime.now();
+                                    return aDate.compareTo(bDate);
+                                  });
 
-                                final isCommentOwner =
-                                    currentUserId.isNotEmpty &&
-                                        commentUserId == currentUserId;
-                                final isPostOwner = currentUserId.isNotEmpty &&
-                                    postOwnerId == currentUserId;
+                                  return ListView.separated(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount: sortedComments.length,
+                                    separatorBuilder: (_, _) =>
+                                        const SizedBox(height: 12),
+                                    itemBuilder: (context, index) {
+                                      final commentDoc = sortedComments[index];
+                                      final commentId = commentDoc.id;
+                                      final comm = commentDoc.data()
+                                          as Map<String, dynamic>;
+                                      final commentUserId =
+                                          comm['userId'] as String? ?? '';
+                                      final commentText =
+                                          comm['text'] as String? ?? '';
+                                      final commentCreatedAt =
+                                          (comm['createdAt'] as Timestamp?)
+                                                  ?.toDate() ??
+                                              DateTime.now();
+                                      final commentLastEditedAt =
+                                          (comm['lastEditedAt'] as Timestamp?)
+                                              ?.toDate();
 
-                                final canEdit = isCommentOwner;
-                                final canDelete =
-                                    isCommentOwner || isPostOwner;
+                                      final isCommentOwner =
+                                          currentUserId.isNotEmpty &&
+                                              commentUserId == currentUserId;
+                                      final isPostOwner =
+                                          currentUserId.isNotEmpty &&
+                                              postOwnerId == currentUserId;
 
-                                return CommentTile(
-                                  commentId: commentId,
-                                  userId: commentUserId,
-                                  userName: comm['userName'] ?? 'User',
-                                  text: commentText,
-                                  createdAt: commentCreatedAt,
-                                  lastEditedAt: commentLastEditedAt,
-                                  onEdit: canEdit
-                                      ? () => _startEditingComment(
-                                          commentId, commentText)
-                                      : null,
-                                  onDelete: canDelete
-                                      ? () =>
-                                          _confirmDeleteComment(commentId)
-                                      : null,
-                                  isProcessing: _isProcessing,
-                                );
-                              },
-                            );
-                          },
+                                      final canEdit = isCommentOwner;
+                                      final canDelete =
+                                          isCommentOwner || isPostOwner;
+
+                                      return CommentTile(
+                                        commentId: commentId,
+                                        userId: commentUserId,
+                                        userName: comm['userName'] ?? 'User',
+                                        text: commentText,
+                                        createdAt: commentCreatedAt,
+                                        lastEditedAt: commentLastEditedAt,
+                                        onEdit: canEdit
+                                            ? () => _startEditingComment(
+                                                commentId, commentText)
+                                            : null,
+                                        onDelete: canDelete
+                                            ? () =>
+                                                _confirmDeleteComment(commentId)
+                                            : null,
+                                        isProcessing: _isProcessing,
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
+                            const SizedBox(height: 80),
+                          ],
                         ),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               ),
+
             ),
             Container(
               decoration: BoxDecoration(
@@ -804,14 +985,36 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                                       try {
                                         final user = FirebaseAuth
                                             .instance.currentUser;
+                                        String commenterName =
+                                            (user?.displayName ?? '').trim();
+                                        if (commenterName.isEmpty && user != null) {
+                                          try {
+                                            final senderDoc =
+                                                await FirebaseFirestore
+                                                    .instance
+                                                    .collection('users')
+                                                    .doc(user.uid)
+                                                    .get();
+                                            final sData = senderDoc.data() ?? {};
+                                            commenterName = (sData['name']
+                                                        as String? ??
+                                                    sData['username']
+                                                        as String? ??
+                                                    '')
+                                                .trim();
+                                          } catch (_) {}
+                                        }
+                                        if (commenterName.isEmpty) {
+                                          commenterName = 'User';
+                                        }
+
                                         final commentId = await widget
                                             .postRepo
                                             .addComment(
                                           widget.postId,
                                           {
                                             'userId': user?.uid ?? '',
-                                            'userName': user?.displayName ??
-                                                'User',
+                                            'userName': commenterName,
                                             'text': text,
                                             'createdAt':
                                                 FieldValue.serverTimestamp(),

@@ -190,6 +190,8 @@ class _ProfileViewBody extends StatelessWidget {
                             totalLikes: state.totalLikes,
                             followersCount: state.followersCount,
                             followingCount: state.followingCount,
+                            websiteGenerated: (state.userData?['websiteGenerated'] as bool?) ?? false,
+                            websiteUrl: state.userData?['websiteUrl'] as String?,
                             onEditProfile: () {
                               Navigator.push(
                                 context,

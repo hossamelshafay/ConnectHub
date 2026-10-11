@@ -205,6 +205,9 @@ class UserModel {
 
   final String? resumeUrl;
   final String? publicPortfolioUrl;
+  final bool websiteGenerated;
+  final String? websiteUrl;
+  final DateTime? websiteGeneratedAt;
 
   // ── Social Metrics ───────────────────────────────────────────────────────
   final int followersCount;
@@ -233,6 +236,9 @@ class UserModel {
     this.sectionVisibility = const SectionVisibilityModel(),
     this.resumeUrl,
     this.publicPortfolioUrl,
+    this.websiteGenerated = false,
+    this.websiteUrl,
+    this.websiteGeneratedAt,
     this.followersCount = 0,
     this.followingCount = 0,
     this.createdAt,
@@ -285,6 +291,10 @@ class UserModel {
       sectionVisibility: SectionVisibilityModel.fromMap(rawVis),
       resumeUrl: data['resumeUrl'] as String? ?? data['cvUrl'] as String?,
       publicPortfolioUrl: data['publicPortfolioUrl'] as String?,
+      websiteGenerated: (data['websiteGenerated'] as bool?) ?? false,
+      websiteUrl: data['websiteUrl'] as String? ?? data['publicPortfolioUrl'] as String?,
+      websiteGeneratedAt: (data['generatedAt'] as Timestamp?)?.toDate() ??
+          (data['publicPortfolioUpdatedAt'] as Timestamp?)?.toDate(),
       followersCount: (data['followersCount'] as int?) ?? 0,
       followingCount: (data['followingCount'] as int?) ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
@@ -314,6 +324,10 @@ class UserModel {
       'sectionVisibility': sectionVisibility.toMap(),
       if (resumeUrl != null) 'resumeUrl': resumeUrl,
       if (publicPortfolioUrl != null) 'publicPortfolioUrl': publicPortfolioUrl,
+      'websiteGenerated': websiteGenerated,
+      if (websiteUrl != null) 'websiteUrl': websiteUrl,
+      if (websiteGeneratedAt != null)
+        'generatedAt': Timestamp.fromDate(websiteGeneratedAt!),
       'followersCount': followersCount,
       'followingCount': followingCount,
     };
@@ -341,6 +355,9 @@ class UserModel {
     SectionVisibilityModel? sectionVisibility,
     String? resumeUrl,
     String? publicPortfolioUrl,
+    bool? websiteGenerated,
+    String? websiteUrl,
+    DateTime? websiteGeneratedAt,
     int? followersCount,
     int? followingCount,
     DateTime? createdAt,
@@ -367,6 +384,9 @@ class UserModel {
       sectionVisibility: sectionVisibility ?? this.sectionVisibility,
       resumeUrl: resumeUrl ?? this.resumeUrl,
       publicPortfolioUrl: publicPortfolioUrl ?? this.publicPortfolioUrl,
+      websiteGenerated: websiteGenerated ?? this.websiteGenerated,
+      websiteUrl: websiteUrl ?? this.websiteUrl,
+      websiteGeneratedAt: websiteGeneratedAt ?? this.websiteGeneratedAt,
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
       createdAt: createdAt ?? this.createdAt,

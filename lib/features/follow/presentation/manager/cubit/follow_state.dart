@@ -12,6 +12,8 @@ class FollowLoaded extends FollowState {
   final String? profileImage;
   final String? username;
   final String? bio;
+  final bool websiteGenerated;
+  final String? websiteUrl;
 
   FollowLoaded({
     required this.isFollowing,
@@ -21,6 +23,8 @@ class FollowLoaded extends FollowState {
     this.profileImage,
     this.username,
     this.bio,
+    this.websiteGenerated = false,
+    this.websiteUrl,
   });
 }
 

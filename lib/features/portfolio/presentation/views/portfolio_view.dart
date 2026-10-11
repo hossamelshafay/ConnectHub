@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
@@ -20,6 +19,7 @@ import 'package:connecthub/features/portfolio_import/presentation/widgets/projec
 import 'package:connecthub/features/portfolio_import/presentation/widgets/education_form_sheet.dart';
 import 'package:connecthub/features/portfolio_import/presentation/widgets/certificate_form_sheet.dart';
 import 'package:connecthub/features/portfolio_import/presentation/widgets/skills_editor_sheet.dart';
+import 'package:connecthub/core/config/portfolio_config.dart';
 import 'package:connecthub/features/generate_website/presentation/widgets/generate_website_button.dart';
 
 /// The Professional Portfolio View (Phase 1).
@@ -99,15 +99,13 @@ class _PortfolioViewBody extends StatelessWidget {
               final user = state.user;
               return Row(
                 children: [
-                  if (isCurrentUser)
-                    GenerateWebsiteButton(user: user, compact: true)
-                  else
-                    IconButton(
-                      icon: const Icon(Icons.share_outlined,
-                          color: Colors.white, size: 20),
-                      tooltip: 'Share Portfolio',
-                      onPressed: () => _shareProfile(context, user),
-                    ),
+                  GenerateWebsiteButton(
+                    user: user,
+                    isOwner: isCurrentUser,
+                    compact: true,
+                    onWebsiteGenerated: () =>
+                        context.read<PortfolioCubit>().loadPortfolio(userId),
+                  ),
                   if (isCurrentUser)
                     IconButton(
                       icon: const Icon(Icons.tune_rounded,
@@ -682,20 +680,6 @@ class _PortfolioViewBody extends StatelessWidget {
       ),
     );
   }
-
-  void _shareProfile(BuildContext context, UserModel user) {
-    final slug = user.profileSlug ?? user.uid;
-    final url = 'https://connecthub.app/u/$slug';
-    Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Portfolio URL copied: $url'),
-        backgroundColor: const Color(0xFF0EA5E9),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -867,33 +851,41 @@ class _HeroSection extends StatelessWidget {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      // Public Slug Tag
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF334155)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.link,
-                                size: 14, color: Color(0xFF38BDF8)),
-                            const SizedBox(width: 6),
-                            Text(
-                              'connecthub.app/u/${user.profileSlug ?? user.uid}',
-                              style: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 11,
-                                fontFamily: 'monospace',
+                      // If websiteGenerated == true, show only a small Website icon. Otherwise show nothing.
+                      if (user.websiteGenerated) ...[
+                        const SizedBox(height: 10),
+                        Tooltip(
+                          message: 'Visit Website',
+                          child: InkWell(
+                            onTap: () {
+                              final targetUrl = user.websiteUrl ??
+                                  (user.profileSlug != null
+                                      ? PortfolioConfig.buildUrl(user.profileSlug!)
+                                      : null);
+                              if (targetUrl != null && targetUrl.trim().isNotEmpty) {
+                                _ContactCard._launch(context, targetUrl);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F172A),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF38BDF8),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.language_rounded,
+                                size: 16,
+                                color: Color(0xFF38BDF8),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                       if (onSwitchToSocial != null) ...[
                         const SizedBox(height: 14),
                         PortfolioSwitchButton(

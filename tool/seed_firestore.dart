@@ -648,11 +648,11 @@ class _Seeder {
   ) async {
     int totalComments = 0;
     final commentsPerPost = (targetCount / postIds.length).ceil();
+    final expectedTotal = postIds.length * commentsPerPost;
 
     for (int p = 0; p < postIds.length; p++) {
       final postId = postIds[p];
       for (int c = 0; c < commentsPerPost; c++) {
-        if (totalComments >= targetCount) break;
         final commenter = users[(p * 3 + c + 1) % users.length];
         final commentId = 'comm_${postId}_$c';
         final commentText = _comments[(p + c) % _comments.length];
@@ -671,7 +671,7 @@ class _Seeder {
       }
 
       if ((p + 1) % 35 == 0 || p + 1 == postIds.length) {
-        _printProgress(totalComments, targetCount, 'Comments');
+        _printProgress(totalComments, expectedTotal, 'Comments');
       }
     }
     print('');

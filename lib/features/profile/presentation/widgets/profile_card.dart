@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/features/portfolio/presentation/widgets/portfolio_switch_button.dart';
 
@@ -17,6 +18,8 @@ class ProfileCard extends StatelessWidget {
   final String? profileImage;
   final DateTime? joinedDate;
   final bool isCurrentUser;
+  final bool websiteGenerated;
+  final String? websiteUrl;
   final VoidCallback? onEditProfile;
   final VoidCallback? onLikedPosts;
   final VoidCallback? onFollowersTap;
@@ -36,6 +39,8 @@ class ProfileCard extends StatelessWidget {
     this.profileImage,
     this.joinedDate,
     this.isCurrentUser = true,
+    this.websiteGenerated = false,
+    this.websiteUrl,
     this.onEditProfile,
     this.onLikedPosts,
     this.onFollowersTap,
@@ -177,7 +182,7 @@ class ProfileCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // Joined Date
+          // Joined Date & Optional Website Icon
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -195,6 +200,40 @@ class ProfileCard extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              if (websiteGenerated) ...[
+                const SizedBox(width: 10),
+                Tooltip(
+                  message: 'Visit Website',
+                  child: InkWell(
+                    onTap: () async {
+                      if (websiteUrl != null && websiteUrl!.trim().isNotEmpty) {
+                        final uri = Uri.tryParse(websiteUrl!.trim());
+                        if (uri != null) {
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.language_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
 

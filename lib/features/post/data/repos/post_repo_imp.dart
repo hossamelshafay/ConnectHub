@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connecthub/core/services/image_bb_service.dart';
 import 'package:connecthub/core/utils/mention_helper.dart';
 import 'package:connecthub/features/post/data/repos/post_repo.dart';
+import 'package:connecthub/features/notification/data/models/notification_model.dart';
+import 'package:connecthub/features/notification/data/repos/notification_repo_imp.dart';
 
 class PostRepoImp implements PostRepo {
   final CollectionReference _postsCollection =
@@ -267,17 +269,19 @@ class PostRepoImp implements PostRepo {
     return _postsCollection
         .doc(postId)
         .collection('comments')
-        .orderBy('createdAt', descending: true)
+        .orderBy('createdAt', descending: false)
         .snapshots();
   }
 
   @override
   Future<String> addComment(String postId, Map<String, dynamic> data) async {
-    _postsCollection.doc(postId).update({
-      'commentCount': FieldValue.increment(1),
-    });
     final commentRef =
         await _postsCollection.doc(postId).collection('comments').add(data);
+    try {
+      await _postsCollection.doc(postId).set({
+        'commentCount': FieldValue.increment(1),
+      }, SetOptions(merge: true));
+    } catch (_) {}
     return commentRef.id;
   }
 
@@ -439,16 +443,43 @@ class PostRepoImp implements PostRepo {
   Future<void> toggleLike(String postId, String userId) async {
     final postRef = _postsCollection.doc(postId);
     final doc = await postRef.get();
-    final data = doc.data() as Map<String, dynamic>;
+    if (!doc.exists) return;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
     final likes = List<String>.from(data['likes'] ?? []);
+    final postOwnerId = data['userId'] as String? ?? '';
 
-    if (likes.contains(userId)) {
+    final wasLiked = likes.contains(userId);
+    if (wasLiked) {
       likes.remove(userId);
     } else {
       likes.add(userId);
     }
 
     await postRef.update({'likes': likes, 'likeCount': likes.length});
+
+    if (!wasLiked && userId != postOwnerId && postOwnerId.isNotEmpty) {
+      try {
+        final senderDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+        final Map<String, dynamic> senderData = senderDoc.data() ?? {};
+        await NotificationRepoImp().createNotification(
+          NotificationModel(
+            id: '',
+            senderId: userId,
+            senderName: senderData['name'] as String? ?? 'Someone',
+            senderUsername: senderData['username'] as String? ?? '',
+            senderPhoto: senderData['profileImage'] as String?,
+            receiverId: postOwnerId,
+            type: NotificationType.like,
+            postId: postId,
+            createdAt: DateTime.now(),
+            isRead: false,
+          ),
+        );
+      } catch (_) {}
+    }
   }
 
   @override

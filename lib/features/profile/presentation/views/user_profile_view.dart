@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_cubit.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_state.dart';
@@ -190,6 +191,10 @@ class _UserProfileHeader extends StatelessWidget {
         final customUsername =
             followState is FollowLoaded ? followState.username : null;
         final bio = followState is FollowLoaded ? followState.bio : null;
+        final isWebsiteGenerated =
+            followState is FollowLoaded ? followState.websiteGenerated : false;
+        final websiteUrl =
+            followState is FollowLoaded ? followState.websiteUrl : null;
 
         final usernameStr = customUsername?.trim().isNotEmpty == true
             ? (customUsername!.startsWith('@')
@@ -296,6 +301,41 @@ class _UserProfileHeader extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ],
+
+              if (isWebsiteGenerated) ...[
+                const SizedBox(height: 10),
+                Tooltip(
+                  message: 'Visit Website',
+                  child: InkWell(
+                    onTap: () async {
+                      if (websiteUrl != null && websiteUrl.trim().isNotEmpty) {
+                        final uri = Uri.tryParse(websiteUrl.trim());
+                        if (uri != null) {
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.language_rounded,
+                        size: 15,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ],
 

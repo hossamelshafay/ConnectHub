@@ -56,38 +56,65 @@ class PortfolioImportCubit extends Cubit<PortfolioImportState> {
     try {
       final portfolio = await _repo.uploadCv(file);
       emit(PortfolioImportSuccess(portfolio));
-    } on TimeoutFailure {
-      emit(const PortfolioImportError(
-          'Request timed out. The AI engine may be processing a large CV. Please try again.'));
+    } on AiServiceUnavailableFailure catch (e) {
+      emit(PortfolioImportError(
+        e.message,
+        canRetry: true,
+        retryFile: file,
+      ));
+    } on TimeoutFailure catch (e) {
+      emit(PortfolioImportError(
+        e.message,
+        canRetry: true,
+        retryFile: file,
+      ));
+    } on ValidationFailure catch (e) {
+      emit(PortfolioImportError(e.message));
+    } on ServerFailure catch (e) {
+      emit(_mapServerError(e, file));
     } on NetworkFailure catch (e) {
       emit(PortfolioImportError(
-          'Network error: ${e.message}\n\nMake sure the AI engine is running.'));
-    } on ServerFailure catch (e) {
-      emit(_mapServerError(e));
+        'AI engine network error: ${e.message}\n\nPlease check your network or enter portfolio details manually.',
+        canRetry: true,
+        retryFile: file,
+      ));
     } catch (e) {
-      emit(PortfolioImportError('Unexpected error: ${e.toString()}'));
+      emit(PortfolioImportError(
+        'Unexpected error parsing CV: ${e.toString()}',
+        canRetry: true,
+        retryFile: file,
+      ));
     }
   }
 
-  PortfolioImportError _mapServerError(ServerFailure e) {
+  PortfolioImportError _mapServerError(ServerFailure e, File file) {
     switch (e.statusCode) {
       case 400:
-        return PortfolioImportError('Invalid file: ${e.message}');
+        return PortfolioImportError('Invalid CV file: ${e.message}');
       case 413:
         return const PortfolioImportError(
-            'File is too large for the server. Maximum allowed size is 5 MB.');
+            'The CV file exceeds the maximum 5 MB limit. Please select a smaller PDF.');
       case 422:
-        return PortfolioImportError('Validation error: ${e.message}');
+        return PortfolioImportError('CV document format unreadable: ${e.message}');
       case 502:
       case 503:
-        return const PortfolioImportError(
-            'AI service temporarily unavailable. Please try again shortly.');
+        return PortfolioImportError(
+          'AI service temporarily unavailable. Please try again shortly or fill in your details manually.',
+          canRetry: true,
+          retryFile: file,
+        );
       case 504:
-        return const PortfolioImportError(
-            'AI engine timed out. Try again — it may work with a smaller CV.');
+        return PortfolioImportError(
+          'AI engine timed out analyzing this CV. Try again or try with a smaller PDF.',
+          canRetry: true,
+          retryFile: file,
+        );
       default:
         return PortfolioImportError(
-            'Server error (${e.statusCode}): ${e.message}');
+          'Server error (${e.statusCode}): ${e.message}',
+          canRetry: true,
+          retryFile: file,
+        );
     }
   }
 

@@ -177,15 +177,61 @@ class _GenerateWebsiteButtonContentState
   }
 
   Future<void> _openWebsite(BuildContext context) async {
-    final url = _targetUrl;
+    final url = _targetUrl.trim();
+    assert(() {
+      // ignore: avoid_print
+      debugPrint('[GenerateWebsiteButton] Opening website: $url');
+      return true;
+    }());
+
+    if (url.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No website URL available.'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+      }
+      return;
+    }
+
     final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    if (uri == null || !uri.hasScheme) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not open website: $url'),
+            content: Text('Invalid website URL: $url'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Do NOT use canLaunchUrl for HTTPS URLs — on Android 11+ it returns false
+    // for valid HTTPS URLs unless <queries> is declared in the manifest.
+    // Launch directly and handle failure via return value or exception.
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        // externalApplication failed; fall back to platformDefault
+        final launchedFallback = await launchUrl(uri, mode: LaunchMode.platformDefault);
+        if (!launchedFallback && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open: $url'),
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[GenerateWebsiteButton] launchUrl error: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open website: $e'),
             backgroundColor: const Color(0xFFDC2626),
           ),
         );

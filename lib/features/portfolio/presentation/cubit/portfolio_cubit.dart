@@ -7,6 +7,7 @@ import 'package:connecthub/features/portfolio/data/models/education_model.dart';
 import 'package:connecthub/features/portfolio/data/models/certificate_model.dart';
 import 'package:connecthub/features/portfolio/data/repos/portfolio_repo.dart';
 import 'package:connecthub/features/portfolio/data/repos/portfolio_repo_imp.dart';
+import 'package:connecthub/core/services/portfolio_sync_service.dart';
 import 'package:connecthub/features/portfolio/presentation/cubit/portfolio_state.dart';
 
 class PortfolioCubit extends Cubit<PortfolioState> {
@@ -107,6 +108,7 @@ class PortfolioCubit extends Cubit<PortfolioState> {
         sectionVisibility: sectionVisibility,
       );
       emit(PortfolioUpdateSuccess());
+      PortfolioSyncService().syncUserPortfolio(uid).ignore();
     } catch (e) {
       emit(PortfolioError(e.toString().replaceAll('Exception: ', '')));
     }

@@ -26,7 +26,9 @@ class PortfolioImportSuccess extends PortfolioImportState {
 
 class PortfolioImportError extends PortfolioImportState {
   final String message;
-  const PortfolioImportError(this.message);
+  final bool canRetry;
+  final File? retryFile;
+  const PortfolioImportError(this.message, {this.canRetry = false, this.retryFile});
 }
 
 // ── Portfolio Editor States (CRUD) ───────────────────────────────────────────

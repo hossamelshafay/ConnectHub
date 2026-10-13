@@ -138,60 +138,6 @@ class _HeroProfileAvatarState extends State<HeroProfileAvatar>
                 child: _buildImage(imageInnerSize),
               ),
             ),
-
-            // Floating "Available for work" Status Pill at bottom right
-            Positioned(
-              bottom: 4,
-              right: 6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: (widget.isDark ? WebColors.surfaceElevated : Colors.white)
-                      .withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: WebColors.border,
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: WebColors.emeraldAccent,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: WebColors.emeraldAccent,
-                            blurRadius: 6,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Available for work',
-                      style: WebTextStyles.bodySmall(isDark: widget.isDark).copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: widget.isDark ? WebColors.textPrimary : WebColors.lightTextPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -225,14 +171,14 @@ class _HeroProfileAvatarState extends State<HeroProfileAvatar>
   }
 
   Widget _buildFallbackAvatar(double size) {
-    final initials = widget.name.isNotEmpty
+    final initials = widget.name.trim().isNotEmpty
         ? widget.name
             .trim()
             .split(RegExp(r'\s+'))
             .take(2)
             .map((part) => part.isNotEmpty ? part[0].toUpperCase() : '')
             .join()
-        : 'HS';
+        : '?';
 
     return Container(
       width: size,

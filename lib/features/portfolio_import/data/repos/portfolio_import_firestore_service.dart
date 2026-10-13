@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connecthub/core/services/portfolio_sync_service.dart';
 import 'package:connecthub/features/portfolio_import/data/models/cv_portfolio_model.dart';
 
 /// Converts a [CvPortfolioModel] (AI output) into Firestore-ready models
@@ -179,6 +180,7 @@ class PortfolioImportFirestoreService {
         '[PortfolioImportFirestore] ✅ Batch write committed successfully! '
         '($batchCount operations in ${duration.inMilliseconds} ms)',
       );
+      PortfolioSyncService().syncUserPortfolio(effectiveUid).ignore();
     } on FirebaseException catch (e, st) {
       // ignore: avoid_print
       print('================================================================');

@@ -8,6 +8,7 @@ import '../theme/web_theme.dart';
 import '../models/portfolio_view_data.dart';
 import '../widgets/responsive_container.dart';
 import '../widgets/web_section_header.dart';
+import '../widgets/section_empty_state.dart';
 import '../animations/entrance_fader.dart';
 import '../animations/hover_tilt_card.dart';
 import '../responsive/responsive.dart';
@@ -25,9 +26,6 @@ class CertificatesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (data.certificates.isEmpty) {
-      return const SizedBox.shrink();
-    }
     final isMobile = WebTheme.isMobile(context);
 
     return ResponsiveContainer(
@@ -39,28 +37,33 @@ class CertificatesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           WebSectionHeader(
-            eyebrow: 'Credentials',
-            title: 'Certifications & Honors',
-            subtitle:
-                'Industry-recognized certifications validating core mobile engineering, '
-                'systems architecture, and cloud best practices.',
+            eyebrow: 'Certificates',
+            title: 'Certificates',
+            subtitle: null,
             isDark: isDark,
           ),
 
-          // Adaptive Certificate Grid: 1 col on mobile, 2 cols on tablet/desktop
-          ResponsiveGrid(
-            maxCrossAxisExtent: 520,
-            crossAxisSpacing: 20,
-            mainAxisSpacing: 20,
-            children: [
-              for (int i = 0; i < data.certificates.length; i++)
-                _CertificateCard(
-                  cert: data.certificates[i],
-                  isDark: isDark,
-                  index: i,
-                ),
-            ],
-          ),
+          if (data.certificates.isEmpty)
+            SectionEmptyState(
+              icon: Icons.verified_outlined,
+              message: 'No certificates added yet.',
+              isDark: isDark,
+            )
+          else
+            // Adaptive Certificate Grid: 1 col on mobile, 2 cols on tablet/desktop
+            ResponsiveGrid(
+              maxCrossAxisExtent: 520,
+              crossAxisSpacing: 20,
+              mainAxisSpacing: 20,
+              children: [
+                for (int i = 0; i < data.certificates.length; i++)
+                  _CertificateCard(
+                    cert: data.certificates[i],
+                    isDark: isDark,
+                    index: i,
+                  ),
+              ],
+            ),
         ],
       ),
     );

@@ -8,6 +8,7 @@ import '../models/portfolio_view_data.dart';
 import '../widgets/responsive_container.dart';
 import '../widgets/web_section_header.dart';
 import '../widgets/tech_badge.dart';
+import '../widgets/section_empty_state.dart';
 import '../animations/entrance_fader.dart';
 import '../animations/hover_tilt_card.dart';
 
@@ -24,9 +25,6 @@ class ExperienceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (data.experiences.isEmpty) {
-      return const SizedBox.shrink();
-    }
     final isMobile = WebTheme.isMobile(context);
 
     return ResponsiveContainer(
@@ -38,25 +36,30 @@ class ExperienceSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           WebSectionHeader(
-            eyebrow: 'Career Journey',
-            title: 'Engineering Experience',
-            subtitle:
-                'Proven track record architecting mission-critical applications, '
-                'leading engineering initiatives, and optimizing high-throughput production systems.',
+            eyebrow: 'Experience',
+            title: 'Experience',
+            subtitle: null,
             isDark: isDark,
           ),
 
-          // Timeline Container
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: data.experiences.length,
-            itemBuilder: (context, index) {
-              final exp = data.experiences[index];
-              final isLast = index == data.experiences.length - 1;
-              return _buildTimelineItem(exp, isLast, index, isMobile);
-            },
-          ),
+          if (data.experiences.isEmpty)
+            SectionEmptyState(
+              icon: Icons.work_outline_rounded,
+              message: 'No experience added yet.',
+              isDark: isDark,
+            )
+          else
+            // Timeline Container
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: data.experiences.length,
+              itemBuilder: (context, index) {
+                final exp = data.experiences[index];
+                final isLast = index == data.experiences.length - 1;
+                return _buildTimelineItem(exp, isLast, index, isMobile);
+              },
+            ),
         ],
       ),
     );

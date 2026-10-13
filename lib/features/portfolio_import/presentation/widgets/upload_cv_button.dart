@@ -56,7 +56,16 @@ class _UploadCvButtonBody extends StatelessWidget {
             ),
           );
         } else if (state is PortfolioImportError) {
-          _showError(context, state.message);
+          _showError(
+            context,
+            state.message,
+            onRetry: state.canRetry && state.retryFile != null
+                ? () {
+                    final cubit = context.read<PortfolioImportCubit>();
+                    cubit.uploadCv(state.retryFile!);
+                  }
+                : null,
+          );
         } else if (state is PortfolioImportFileSelected) {
           // Auto-upload after file is selected
           context.read<PortfolioImportCubit>().uploadCv(state.file);
@@ -189,7 +198,7 @@ class _UploadCvButtonBody extends StatelessWidget {
     );
   }
 
-  void _showError(BuildContext context, String message) {
+  void _showError(BuildContext context, String message, {VoidCallback? onRetry}) {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -197,10 +206,10 @@ class _UploadCvButtonBody extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444)),
+            Icon(Icons.info_outline_rounded, color: Color(0xFF38BDF8)),
             SizedBox(width: 10),
             Text(
-              'Import Failed',
+              'AI Service Status',
               style: TextStyle(color: Colors.white, fontSize: 17),
             ),
           ],
@@ -210,18 +219,29 @@ class _UploadCvButtonBody extends StatelessWidget {
           style: const TextStyle(color: Color(0xFF94A3B8), height: 1.5),
         ),
         actions: [
+          if (onRetry != null)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                onRetry();
+              },
+              child: const Text(
+                'Retry',
+                style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+              ),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'OK',
-              style: TextStyle(color: Color(0xFF38BDF8)),
+              style: TextStyle(color: Color(0xFF94A3B8)),
             ),
           ),
         ],
       ),
     );
-    // Reset cubit so user can try again
-    if (context.mounted) {
+    // Reset cubit if no retry is requested so user can pick another file
+    if (context.mounted && onRetry == null) {
       context.read<PortfolioImportCubit>().reset();
     }
   }

@@ -10,6 +10,7 @@ import 'package:connecthub/features/portfolio/data/models/certificate_model.dart
 class PublicPortfolioSnapshot {
   final String uid;
   final String? username;
+  final String? profileSlug;
   final String name;
   final String email;
   final String? headline;
@@ -37,6 +38,7 @@ class PublicPortfolioSnapshot {
   const PublicPortfolioSnapshot({
     required this.uid,
     this.username,
+    this.profileSlug,
     required this.name,
     this.email = '',
     this.headline,
@@ -102,6 +104,7 @@ class PublicPortfolioSnapshot {
     return PublicPortfolioSnapshot(
       uid: data['uid'] as String? ?? docId ?? '',
       username: data['username'] as String?,
+      profileSlug: data['profileSlug'] as String?,
       name: data['displayName'] as String? ?? data['name'] as String? ?? 'Portfolio User',
       email: data['email'] as String? ?? '',
       headline: data['headline'] as String?,
@@ -137,6 +140,8 @@ class PublicPortfolioSnapshot {
       'uid': uid,
       if (username != null && username!.trim().isNotEmpty)
         'username': username!.trim().toLowerCase(),
+      if (profileSlug != null && profileSlug!.trim().isNotEmpty)
+        'profileSlug': profileSlug!.trim().toLowerCase(),
       'displayName': name,
       'name': name,
       'email': email,
@@ -177,7 +182,7 @@ class PublicPortfolioSnapshot {
       profileImage: profileImage,
       skills: skills,
       socialLinks: socialLinks,
-      profileSlug: username,
+      profileSlug: profileSlug ?? username,
       portfolioCompleted: true,
       resumeUrl: resumeUrl,
       publicPortfolioUrl: publicPortfolioUrl,

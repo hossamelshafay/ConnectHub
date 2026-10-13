@@ -4,6 +4,7 @@ import 'package:connecthub/features/portfolio/data/models/project_model.dart';
 import 'package:connecthub/features/portfolio/data/models/experience_model.dart';
 import 'package:connecthub/features/portfolio/data/models/education_model.dart';
 import 'package:connecthub/features/portfolio/data/models/certificate_model.dart';
+import 'package:connecthub/core/services/portfolio_sync_service.dart';
 import 'package:connecthub/features/portfolio/data/repos/portfolio_repo.dart';
 
 class PortfolioRepoImp implements PortfolioRepo {
@@ -97,6 +98,7 @@ class PortfolioRepoImp implements PortfolioRepo {
 
     if (data.isNotEmpty) {
       await _users.doc(uid).set(data, SetOptions(merge: true));
+      PortfolioSyncService().syncUserPortfolio(uid).ignore();
     }
   }
 

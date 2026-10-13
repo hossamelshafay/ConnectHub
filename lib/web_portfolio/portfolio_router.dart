@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'pages/portfolio_page.dart';
 
 /// Prepares clean, SEO-ready and scalable routing for web portfolio URLs:
-/// - /#/portfolio/{username} (e.g. /#/portfolio/shafay)
+/// - /#/portfolio/{username} (e.g. /#/portfolio/username)
 /// - /#/portfolio/{uid}      (e.g. /#/portfolio/a8dJ92kLmNQ...)
 /// - /portfolio/{username}
 /// - /portfolio/{uid}
@@ -15,7 +16,17 @@ class PortfolioRouter {
 
   /// Generates routes for the Web Portfolio experience.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
-    final rawName = settings.name ?? '/';
+    String rawName = settings.name ?? '/';
+
+    // On Flutter Web, if root route was provided, inspect browser's actual Uri.base fragment
+    if (kIsWeb && (rawName == '/' || rawName.isEmpty)) {
+      final base = Uri.base;
+      if (base.fragment.isNotEmpty) {
+        rawName = base.fragment;
+      } else if (base.pathSegments.isNotEmpty) {
+        rawName = base.path;
+      }
+    }
 
     // Normalize hash fragments (e.g. "#/portfolio/shafay" -> "/portfolio/shafay")
     String effectivePath = rawName;

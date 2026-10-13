@@ -284,55 +284,50 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
                 ),
               ),
 
-              // Section 2: Skills (Hidden automatically if empty)
-              if (data.skills.isNotEmpty)
-                Container(
-                  key: _skillsKey,
-                  child: SkillsSection(
-                    data: data,
-                    isDark: _isDark,
-                  ),
+              // Section 2: Skills
+              Container(
+                key: _skillsKey,
+                child: SkillsSection(
+                  data: data,
+                  isDark: _isDark,
                 ),
+              ),
 
-              // Section 3: Experience (Hidden automatically if empty)
-              if (data.experiences.isNotEmpty)
-                Container(
-                  key: _experienceKey,
-                  child: ExperienceSection(
-                    data: data,
-                    isDark: _isDark,
-                  ),
+              // Section 3: Experience
+              Container(
+                key: _experienceKey,
+                child: ExperienceSection(
+                  data: data,
+                  isDark: _isDark,
                 ),
+              ),
 
-              // Section 4: Projects (Hidden automatically if empty)
-              if (data.projects.isNotEmpty)
-                Container(
-                  key: _projectsKey,
-                  child: ProjectsSection(
-                    data: data,
-                    isDark: _isDark,
-                  ),
+              // Section 4: Projects
+              Container(
+                key: _projectsKey,
+                child: ProjectsSection(
+                  data: data,
+                  isDark: _isDark,
                 ),
+              ),
 
-              // Section 5: Education (Hidden automatically if empty)
-              if (data.educations.isNotEmpty)
-                Container(
-                  key: _educationKey,
-                  child: EducationSection(
-                    data: data,
-                    isDark: _isDark,
-                  ),
+              // Section 5: Education
+              Container(
+                key: _educationKey,
+                child: EducationSection(
+                  data: data,
+                  isDark: _isDark,
                 ),
+              ),
 
-              // Section 6: Certificates (Hidden automatically if empty)
-              if (data.certificates.isNotEmpty)
-                Container(
-                  key: _certificatesKey,
-                  child: CertificatesSection(
-                    data: data,
-                    isDark: _isDark,
-                  ),
+              // Section 6: Certificates
+              Container(
+                key: _certificatesKey,
+                child: CertificatesSection(
+                  data: data,
+                  isDark: _isDark,
                 ),
+              ),
 
               // Section 7: Contact
               Container(

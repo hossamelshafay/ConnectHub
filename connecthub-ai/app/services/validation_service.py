@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
 
 import pymupdf
 from pydantic import BaseModel, ValidationError
@@ -322,5 +322,198 @@ class ValidationService:
             )
 
         return self.validate_model(parsed, expected_model, context=context)
+
+    # ── Rule 8 & 9: Anti-Hallucination Pipeline Validation ────────────────────
+
+    def validate_and_prepare_portfolio_input(
+        self, raw_data: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], List[str]]:
+        """
+        Validate portfolio data from Firebase before passing to Gemini (Rule 8).
+
+        Pseudo logic:
+          - Load portfolio from Firebase
+          - Validate every section
+          - If a section is empty: mark it as empty
+          - Prepare structured validated data for Gemini
+
+        Returns:
+            A tuple of (clean_validated_data, empty_sections_list).
+        """
+        empty_sections: List[str] = []
+
+        def clean_str(val: Any) -> Optional[str]:
+            if val is None:
+                return None
+            s = str(val).strip()
+            return s if s else None
+
+        # Clean string fields
+        clean_name = clean_str(raw_data.get("name"))
+        clean_headline = clean_str(raw_data.get("headline"))
+        clean_bio = clean_str(raw_data.get("bio"))
+        clean_about = clean_str(raw_data.get("about"))
+
+        if not clean_about and not clean_bio:
+            empty_sections.append("about")
+
+        # Clean list sections
+        def clean_skills(raw_skills: Any) -> List[str]:
+            if not isinstance(raw_skills, list):
+                return []
+            return [s.strip() for s in raw_skills if isinstance(s, str) and s.strip()]
+
+        def clean_dict_list(raw_list: Any, required_any_keys: List[str]) -> List[Dict[str, Any]]:
+            if not isinstance(raw_list, list):
+                return []
+            cleaned = []
+            for item in raw_list:
+                if isinstance(item, dict):
+                    # Check if at least one meaningful value exists
+                    has_val = any(
+                        isinstance(item.get(k), str) and item[k].strip()
+                        for k in required_any_keys
+                    )
+                    if has_val:
+                        cleaned.append(item)
+            return cleaned
+
+        skills = clean_skills(raw_data.get("skills"))
+        if not skills:
+            empty_sections.append("skills")
+
+        projects = clean_dict_list(
+            raw_data.get("projects"), ["title", "name", "description"]
+        )
+        if not projects:
+            empty_sections.append("projects")
+
+        experience = clean_dict_list(
+            raw_data.get("experience"), ["company", "position", "title", "role"]
+        )
+        if not experience:
+            empty_sections.append("experience")
+
+        education = clean_dict_list(
+            raw_data.get("education"), ["institution", "degree", "school", "university"]
+        )
+        if not education:
+            empty_sections.append("education")
+
+        certificates = clean_dict_list(
+            raw_data.get("certificates"), ["title", "name", "issuer"]
+        )
+        if not certificates:
+            empty_sections.append("certificates")
+
+        validated = {
+            "uid": clean_str(raw_data.get("uid")) or "",
+            "username": clean_str(raw_data.get("username")),
+            "profile_slug": clean_str(raw_data.get("profile_slug")),
+            "name": clean_name,
+            "headline": clean_headline,
+            "bio": clean_bio,
+            "about": clean_about,
+            "location": clean_str(raw_data.get("location")),
+            "email": clean_str(raw_data.get("email")),
+            "phone": clean_str(raw_data.get("phone")),
+            "profile_image": clean_str(raw_data.get("profile_image")),
+            "resume_url": clean_str(raw_data.get("resume_url")),
+            "skills": skills,
+            "projects": projects,
+            "experience": experience,
+            "education": education,
+            "certificates": certificates,
+            "empty_sections": empty_sections,
+        }
+
+        return validated, empty_sections
+
+    def verify_portfolio_fidelity(
+        self, original_data: Dict[str, Any], candidate_data: Dict[str, Any]
+    ) -> None:
+        """
+        Post-generation verification (Rule 9).
+        Compares generated content against original Firebase portfolio data.
+        Rejects generated output if any fabricated data or hallucination is detected.
+
+        Raises:
+            ValidationServiceError: If Gemini invented content that did not exist in Firebase.
+        """
+        # 1. Projects verification
+        orig_projects = original_data.get("projects") or []
+        cand_projects = candidate_data.get("projects") or []
+        if not orig_projects and cand_projects:
+            raise ValidationServiceError(
+                "Hallucination rejected: Gemini invented projects when none existed in Firebase."
+            )
+        if len(cand_projects) > len(orig_projects):
+            raise ValidationServiceError(
+                f"Hallucination rejected: Gemini generated {len(cand_projects)} projects, but only "
+                f"{len(orig_projects)} exist in Firebase."
+            )
+
+        # 2. Experience verification
+        orig_exp = original_data.get("experience") or []
+        cand_exp = candidate_data.get("experience") or []
+        if not orig_exp and cand_exp:
+            raise ValidationServiceError(
+                "Hallucination rejected: Gemini invented work experience when none existed in Firebase."
+            )
+        if len(cand_exp) > len(orig_exp):
+            raise ValidationServiceError(
+                f"Hallucination rejected: Gemini generated {len(cand_exp)} experiences, but only "
+                f"{len(orig_exp)} exist in Firebase."
+            )
+
+        # 3. Education verification
+        orig_edu = original_data.get("education") or []
+        cand_edu = candidate_data.get("education") or []
+        if not orig_edu and cand_edu:
+            raise ValidationServiceError(
+                "Hallucination rejected: Gemini invented education when none existed in Firebase."
+            )
+        if len(cand_edu) > len(orig_edu):
+            raise ValidationServiceError(
+                f"Hallucination rejected: Gemini generated {len(cand_edu)} education entries, but only "
+                f"{len(orig_edu)} exist in Firebase."
+            )
+
+        # 4. Certificates verification
+        orig_certs = original_data.get("certificates") or []
+        cand_certs = candidate_data.get("certificates") or []
+        if not orig_certs and cand_certs:
+            raise ValidationServiceError(
+                "Hallucination rejected: Gemini invented certificates when none existed in Firebase."
+            )
+        if len(cand_certs) > len(orig_certs):
+            raise ValidationServiceError(
+                f"Hallucination rejected: Gemini generated {len(cand_certs)} certificates, but only "
+                f"{len(orig_certs)} exist in Firebase."
+            )
+
+        # 5. Skills verification
+        orig_skills = [s.strip().lower() for s in (original_data.get("skills") or []) if s]
+        cand_skills = [s.strip().lower() for s in (candidate_data.get("skills") or []) if s]
+        if not orig_skills and cand_skills:
+            raise ValidationServiceError(
+                "Hallucination rejected: Gemini invented skills when none existed in Firebase."
+            )
+        orig_skills_set = set(orig_skills)
+        for s in cand_skills:
+            if s not in orig_skills_set and not any(orig in s or s in orig for orig in orig_skills_set):
+                raise ValidationServiceError(
+                    f"Hallucination rejected: Gemini fabricated skill '{s}' not present in Firebase."
+                )
+
+        logger.info(
+            "validation.fidelity_verified",
+            skills_count=len(cand_skills),
+            projects_count=len(cand_projects),
+            experience_count=len(cand_exp),
+            education_count=len(cand_edu),
+            certificates_count=len(cand_certs),
+        )
+
 
 

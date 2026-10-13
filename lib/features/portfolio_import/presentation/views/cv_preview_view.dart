@@ -118,7 +118,10 @@ class _CvPreviewViewState extends State<CvPreviewView> {
       print('================================================================');
       if (mounted) {
         setState(() => _isSaving = false);
-        _showError('Import failed [${e.code}]: ${e.message ?? "Unknown Firestore error"}');
+        _showError(
+          'Failed to save portfolio to Firebase [${e.code}]: ${e.message ?? "Network or permission error"}',
+          canRetry: true,
+        );
       }
     } catch (e, st) {
       // ignore: avoid_print
@@ -129,19 +132,27 @@ class _CvPreviewViewState extends State<CvPreviewView> {
       print('================================================================');
       if (mounted) {
         setState(() => _isSaving = false);
-        _showError('Import failed: ${e.toString()}');
+        _showError('Failed to save portfolio: ${e.toString()}', canRetry: true);
       }
     }
   }
 
-  void _showError(String msg) {
+  void _showError(String msg, {bool canRetry = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
         backgroundColor: const Color(0xFFEF4444),
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 8),
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        action: canRetry
+            ? SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _import,
+              )
+            : null,
       ),
     );
   }

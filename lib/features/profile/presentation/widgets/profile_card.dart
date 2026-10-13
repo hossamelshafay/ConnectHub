@@ -208,9 +208,18 @@ class ProfileCard extends StatelessWidget {
                     onTap: () async {
                       if (websiteUrl != null && websiteUrl!.trim().isNotEmpty) {
                         final uri = Uri.tryParse(websiteUrl!.trim());
-                        if (uri != null) {
-                          await launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
+                        if (uri == null || !uri.hasScheme) return;
+                        debugPrint('[ProfileCard] Opening website: $uri');
+                        try {
+                          final launched = await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                          if (!launched) {
+                            await launchUrl(uri, mode: LaunchMode.platformDefault);
+                          }
+                        } catch (e) {
+                          debugPrint('[ProfileCard] launchUrl error: $e');
                         }
                       }
                     },

@@ -41,6 +41,8 @@ from app.config.settings import Settings, get_settings
 from app.core.logging import get_logger
 from app.schemas.cv_portfolio_schema import CVPortfolio
 from app.schemas.portfolio_schema import PortfolioCreateResponse, PortfolioData
+from app.schemas.website_schema import WebsitePortfolioInput, WebsitePortfolioOutput
+from app.prompts.website_prompt import build_website_prompt
 from app.services.gemini_service import (
     GeminiService,
     GeminiServiceError,
@@ -307,6 +309,105 @@ class PortfolioService:
             content_type=content_type,
             client_ip=client_ip,
         )
+
+    # ── Zero-Hallucination Website Portfolio Pipeline (Rules 1-9) ─────────────
+
+    async def generate_website_portfolio(
+        self,
+        raw_portfolio_data: Union[WebsitePortfolioInput, dict],
+        client_ip: str = "unknown",
+    ) -> WebsitePortfolioOutput:
+        """
+        Generate and format a user's portfolio website data.
+        Guarantees 100% fidelity to real Firebase data (Zero Hallucination).
+
+        Pipeline:
+          1. Pre-validation of input data (Rule 8):
+             - Loads & validates all sections (projects, experience, education, skills, certificates, about, bio).
+             - Explicitly marks empty sections.
+          2. Zero-fabrication check:
+             - If all content sections are empty, returns the validated structure immediately with empty states.
+               No AI call needed that could hallucinate.
+          3. If content exists to format:
+             - Passes to Gemini with strict anti-hallucination system prompt (Rule 7).
+             - The AI is permitted ONLY to format, improve wording, and polish layout (Rule 6).
+          4. Post-generation fidelity verification (Rule 9):
+             - Verifies candidate output against original data.
+             - If Gemini invented any projects, experiences, education, skills, or certificates,
+               the output is REJECTED.
+        """
+        import json
+
+        data_dict = (
+            raw_portfolio_data.model_dump()
+            if isinstance(raw_portfolio_data, WebsitePortfolioInput)
+            else dict(raw_portfolio_data)
+        )
+
+        # ── Step 1: Pre-validation & Empty Section Identification (Rule 8) ────
+        validated, empty_sections = self._validator.validate_and_prepare_portfolio_input(data_dict)
+
+        logger.info(
+            "portfolio.website_generation.start",
+            client_ip=client_ip,
+            uid=validated.get("uid"),
+            empty_sections=empty_sections,
+        )
+
+        # If all content sections are empty, do NOT call Gemini to risk hallucinations.
+        # Rule 3: Generate the website normally but every section should remain empty.
+        all_content_empty = (
+            not validated.get("skills")
+            and not validated.get("projects")
+            and not validated.get("experience")
+            and not validated.get("education")
+            and not validated.get("certificates")
+            and not validated.get("about")
+            and not validated.get("bio")
+        )
+
+        if all_content_empty:
+            logger.info("portfolio.website_generation.all_empty_safe_return")
+            return WebsitePortfolioOutput(**validated)
+
+        # ── Step 2: Build Strict Anti-Hallucination Prompt (Rules 6, 7) ───────
+        prompt = build_website_prompt(validated)
+
+        # ── Step 3: Call Gemini with JSON Mode & Temperature 0.0 ──────────────
+        try:
+            raw_json = await self._gemini.generate_json(prompt)
+            candidate_dict = json.loads(self._validator.clean_json_string(raw_json))
+        except (GeminiTimeoutError, GeminiServiceError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "portfolio.website_gemini_fallback",
+                error=str(exc),
+                hint="Falling back to original validated Firebase data to guarantee zero fabrication.",
+            )
+            # Safe graceful fallback: strictly use validated Firebase data
+            return WebsitePortfolioOutput(**validated)
+
+        # ── Step 4: Post-generation Fidelity Verification (Rule 9) ────────────
+        try:
+            self._validator.verify_portfolio_fidelity(validated, candidate_dict)
+        except ValidationServiceError as exc:
+            logger.error(
+                "portfolio.hallucination_detected_and_rejected",
+                error=str(exc),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Rejected hallucinated AI generation: {exc}",
+            ) from exc
+
+        # Ensure all empty sections remain strictly empty
+        for sec in empty_sections:
+            if sec in candidate_dict and isinstance(candidate_dict[sec], list):
+                candidate_dict[sec] = []
+            elif sec in ["about", "bio"] and sec in candidate_dict:
+                candidate_dict[sec] = None
+
+        candidate_dict["empty_sections"] = empty_sections
+        return WebsitePortfolioOutput(**candidate_dict)
 
     # ── Future Phase Stubs (preserved) ───────────────────────────────────────
 

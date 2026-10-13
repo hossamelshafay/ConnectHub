@@ -9,6 +9,7 @@ import '../models/portfolio_view_data.dart';
 import '../widgets/responsive_container.dart';
 import '../widgets/web_section_header.dart';
 import '../widgets/tech_badge.dart';
+import '../widgets/section_empty_state.dart';
 import '../animations/entrance_fader.dart';
 import '../animations/hover_tilt_card.dart';
 import '../responsive/responsive.dart';
@@ -26,9 +27,6 @@ class ProjectsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (data.projects.isEmpty) {
-      return const SizedBox.shrink();
-    }
     final isMobile = WebTheme.isMobile(context);
 
     return ResponsiveContainer(
@@ -40,28 +38,33 @@ class ProjectsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           WebSectionHeader(
-            eyebrow: 'Selected Work',
-            title: 'Featured Projects',
-            subtitle:
-                'Production-grade systems built with architectural excellence, '
-                'high-performance rendering, and elegant user interaction.',
+            eyebrow: 'Projects',
+            title: 'Projects',
+            subtitle: null,
             isDark: isDark,
           ),
 
-          // Adaptive Project Grid: Scales from 1 column on mobile to 2 or 3 columns on desktop
-          ResponsiveGrid(
-            maxCrossAxisExtent: 540,
-            crossAxisSpacing: 24,
-            mainAxisSpacing: 28,
-            children: [
-              for (int i = 0; i < data.projects.length; i++)
-                _ProjectCard(
-                  project: data.projects[i],
-                  isDark: isDark,
-                  index: i,
-                ),
-            ],
-          ),
+          if (data.projects.isEmpty)
+            SectionEmptyState(
+              icon: Icons.code_rounded,
+              message: 'No projects added yet.',
+              isDark: isDark,
+            )
+          else
+            // Adaptive Project Grid: Scales from 1 column on mobile to 2 or 3 columns on desktop
+            ResponsiveGrid(
+              maxCrossAxisExtent: 540,
+              crossAxisSpacing: 24,
+              mainAxisSpacing: 28,
+              children: [
+                for (int i = 0; i < data.projects.length; i++)
+                  _ProjectCard(
+                    project: data.projects[i],
+                    isDark: isDark,
+                    index: i,
+                  ),
+              ],
+            ),
         ],
       ),
     );

@@ -125,7 +125,7 @@ class WebPortfolioRepositoryImpl implements WebPortfolioRepository {
 
   List<String> _buildRoleTitles(String? headline) {
     if (headline == null || headline.trim().isEmpty) {
-      return const ['Software Engineer', 'Mobile Architect', 'Problem Solver'];
+      return const [];
     }
 
     final delimiters = RegExp(r'[|•,]');
@@ -146,8 +146,14 @@ class WebPortfolioRepositoryImpl implements WebPortfolioRepository {
     required List<ExperienceModel> experiences,
     required List<CertificateModel> certificates,
   }) {
-    // Calculate total accumulated experience years from real timeline dates
-    int experienceYears = 0;
+    final stats = <StatItem>[];
+    if (projects.isNotEmpty) {
+      stats.add(StatItem(
+        count: projects.length,
+        suffix: '+',
+        label: 'Projects',
+      ));
+    }
     if (experiences.isNotEmpty) {
       DateTime? earliestStart;
       DateTime latestEnd = DateTime.now();
@@ -165,31 +171,23 @@ class WebPortfolioRepositoryImpl implements WebPortfolioRepository {
 
       if (earliestStart != null) {
         final days = latestEnd.difference(earliestStart).inDays;
-        experienceYears = (days / 365).round().clamp(1, 40);
+        final experienceYears = (days / 365).round().clamp(1, 40);
+        if (experienceYears > 0) {
+          stats.add(StatItem(
+            count: experienceYears,
+            suffix: '+',
+            label: 'Years Exp.',
+          ));
+        }
       }
     }
-
-    return [
-      StatItem(
-        count: projects.length,
-        suffix: '+',
-        label: 'Projects',
-      ),
-      StatItem(
-        count: experienceYears,
-        suffix: '+',
-        label: 'Years Exp.',
-      ),
-      StatItem(
+    if (certificates.isNotEmpty) {
+      stats.add(StatItem(
         count: certificates.length,
         suffix: '+',
         label: 'Certificates',
-      ),
-      const StatItem(
-        count: 100,
-        suffix: '%',
-        label: 'Dedication',
-      ),
-    ];
+      ));
+    }
+    return stats;
   }
 }

@@ -11,7 +11,7 @@ import 'package:connecthub/web_portfolio/sections/education_section.dart';
 import 'package:connecthub/web_portfolio/sections/certificates_section.dart';
 import 'package:connecthub/web_portfolio/sections/contact_section.dart';
 import 'package:connecthub/web_portfolio/sections/footer_section.dart';
-import 'package:connecthub/web_portfolio/services/portfolio_mock_service.dart';
+import 'helpers/portfolio_test_helper.dart';
 
 void main() {
   final testSizes = [
@@ -29,7 +29,7 @@ void main() {
     const Size(2560, 1440), // 2K / Ultrawide
   ];
 
-  final mockData = PortfolioMockService.getMockPortfolio();
+  final mockData = PortfolioTestHelper.getTestPortfolio();
 
   group('WebNavigationBar Zero Overflow Test', () {
     for (final size in testSizes) {

@@ -7,6 +7,7 @@ import '../theme/web_theme.dart';
 import '../models/portfolio_view_data.dart';
 import '../widgets/responsive_container.dart';
 import '../widgets/web_section_header.dart';
+import '../widgets/section_empty_state.dart';
 import '../animations/entrance_fader.dart';
 
 /// Education Section highlighting academic background and honors.
@@ -22,9 +23,6 @@ class EducationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (data.educations.isEmpty) {
-      return const SizedBox.shrink();
-    }
     final isMobile = WebTheme.isMobile(context);
 
     return ResponsiveContainer(
@@ -36,23 +34,28 @@ class EducationSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           WebSectionHeader(
-            eyebrow: 'Academics',
-            title: 'Education & Foundation',
-            subtitle:
-                'Strong computer science foundation covering algorithms, distributed architectures, '
-                'systems engineering, and software verification.',
+            eyebrow: 'Education',
+            title: 'Education',
+            subtitle: null,
             isDark: isDark,
           ),
 
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: data.educations.length,
-            itemBuilder: (context, index) {
-              final edu = data.educations[index];
-              return _buildEducationCard(edu, index, isMobile);
-            },
-          ),
+          if (data.educations.isEmpty)
+            SectionEmptyState(
+              icon: Icons.school_outlined,
+              message: 'No education added yet.',
+              isDark: isDark,
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: data.educations.length,
+              itemBuilder: (context, index) {
+                final edu = data.educations[index];
+                return _buildEducationCard(edu, index, isMobile);
+              },
+            ),
         ],
       ),
     );

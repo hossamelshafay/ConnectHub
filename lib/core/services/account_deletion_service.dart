@@ -61,6 +61,25 @@ class AccountDeletionService {
     int followersRemoved = 0;
     int followingRemoved = 0;
     int notificationsRemoved = 0;
+    int conversationsDeleted = 0;
+    int portfoliosDeleted = 0;
+    int portfolioItemsDeleted = 0;
+
+    // Fetch user profile upfront to determine username, profileSlug, and portfolioDocId
+    String? username;
+    String? profileSlug;
+    String? publicPortfolioDocId;
+    try {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists && userDoc.data() != null) {
+        final data = userDoc.data()!;
+        username = (data['username'] as String?)?.trim();
+        profileSlug = (data['profileSlug'] as String?)?.trim();
+        publicPortfolioDocId = (data['publicPortfolioDocId'] as String?)?.trim();
+      }
+    } catch (e) {
+      debugPrint('[AccountDeletion] Error reading user doc before deletion: $e');
+    }
 
     // Step 1: User comments everywhere (including other users' posts)
     onProgress?.call('Removing your comments across the app...');
@@ -104,27 +123,51 @@ class AccountDeletionService {
       debugPrint('[AccountDeletion] Error deleting relationships: $e');
     }
 
-    // Step 5: Notifications (received & sent orphan notifications)
+    // Step 5: Direct messages & conversations
+    onProgress?.call('Purging direct messages and conversations...');
+    debugPrint('=== [AccountDeletion] 5. Deleting conversations and messages for $uid ===');
+    try {
+      conversationsDeleted = await _deleteConversations(uid);
+    } catch (e) {
+      debugPrint('[AccountDeletion] Error deleting conversations: $e');
+    }
+
+    // Step 6: Notifications (received & sent orphan notifications)
     onProgress?.call('Purging notifications...');
-    debugPrint('=== [AccountDeletion] 5. Purging notifications ===');
+    debugPrint('=== [AccountDeletion] 6. Purging notifications ===');
     try {
       notificationsRemoved = await _deleteNotifications(uid);
     } catch (e) {
       debugPrint('[AccountDeletion] Error purging notifications: $e');
     }
 
-    // Step 6: User profile document
+    // Step 7: Public portfolio and portfolio subcollections
+    onProgress?.call('Deleting portfolio and website...');
+    debugPrint('=== [AccountDeletion] 7. Deleting public portfolio & subcollections ===');
+    try {
+      portfoliosDeleted = await _deletePublicPortfolio(
+        uid: uid,
+        username: username,
+        profileSlug: profileSlug,
+        publicPortfolioDocId: publicPortfolioDocId,
+      );
+      portfolioItemsDeleted = await _deleteUserSubcollections(uid);
+    } catch (e) {
+      debugPrint('[AccountDeletion] Error deleting portfolio data: $e');
+    }
+
+    // Step 8: User profile document
     onProgress?.call('Deleting profile data...');
-    debugPrint('=== [AccountDeletion] 6. Deleting users/$uid document ===');
+    debugPrint('=== [AccountDeletion] 8. Deleting users/$uid document ===');
     try {
       await _deleteUserProfile(uid);
     } catch (e) {
       debugPrint('[AccountDeletion] Error deleting user profile: $e');
     }
 
-    // Step 7: Local cache cleanup
+    // Step 9: Local cache cleanup
     onProgress?.call('Clearing local caches...');
-    debugPrint('=== [AccountDeletion] 7. Clearing local cache ===');
+    debugPrint('=== [AccountDeletion] 9. Clearing local cache ===');
     try {
       await _clearLocalCache(uid);
     } catch (e) {
@@ -148,6 +191,12 @@ class AccountDeletionService {
     print('Following removed: $followingRemoved');
     // ignore: avoid_print
     print('Notifications removed: $notificationsRemoved');
+    // ignore: avoid_print
+    print('Conversations deleted: $conversationsDeleted');
+    // ignore: avoid_print
+    print('Public portfolios deleted: $portfoliosDeleted');
+    // ignore: avoid_print
+    print('Portfolio subcollection items deleted: $portfolioItemsDeleted');
 
     debugPrint('Posts deleted: $postsDeleted');
     debugPrint('Comments found: $commentsFound');
@@ -157,6 +206,9 @@ class AccountDeletionService {
     debugPrint('Followers removed: $followersRemoved');
     debugPrint('Following removed: $followingRemoved');
     debugPrint('Notifications removed: $notificationsRemoved');
+    debugPrint('Conversations deleted: $conversationsDeleted');
+    debugPrint('Public portfolios deleted: $portfoliosDeleted');
+    debugPrint('Portfolio subcollection items deleted: $portfolioItemsDeleted');
 
     debugPrint('=== [AccountDeletion] Firestore deletion complete for $uid ===');
   }
@@ -542,7 +594,148 @@ class AccountDeletionService {
     return notificationsRemoved;
   }
 
-  /// 6. Deletes the primary user document: users/{uid}
+  /// 7. Deletes all conversations where this user is a participant, including
+  /// all messages in their nested messages subcollection.
+  Future<int> _deleteConversations(String uid) async {
+    int conversationsDeleted = 0;
+    try {
+      final snap = await _firestore
+          .collection('conversations')
+          .where('participants', arrayContains: uid)
+          .get();
+
+      for (final doc in snap.docs) {
+        // Delete all messages in the conversation's messages subcollection
+        try {
+          while (true) {
+            final msgSnap = await doc.reference
+                .collection('messages')
+                .limit(200)
+                .get();
+            if (msgSnap.docs.isEmpty) break;
+            final batch = _firestore.batch();
+            for (final mDoc in msgSnap.docs) {
+              batch.delete(mDoc.reference);
+            }
+            await batch.commit();
+            if (msgSnap.docs.length < 200) break;
+          }
+        } catch (e) {
+          debugPrint('[AccountDeletion] Error clearing messages in ${doc.id}: $e');
+        }
+
+        // Delete the conversation document
+        try {
+          await doc.reference.delete();
+          conversationsDeleted++;
+        } catch (e) {
+          debugPrint('[AccountDeletion] Error deleting conversation ${doc.id}: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[AccountDeletion] Error finding conversations: $e');
+    }
+    return conversationsDeleted;
+  }
+
+  /// 8. Deletes the public portfolio document from public_portfolios collection.
+  Future<int> _deletePublicPortfolio({
+    required String uid,
+    String? username,
+    String? profileSlug,
+    String? publicPortfolioDocId,
+  }) async {
+    int portfoliosDeleted = 0;
+    final Set<String> docIdsToDelete = {};
+
+    if (publicPortfolioDocId != null && publicPortfolioDocId.trim().isNotEmpty) {
+      docIdsToDelete.add(publicPortfolioDocId.trim().toLowerCase());
+    }
+    if (username != null && username.trim().isNotEmpty) {
+      docIdsToDelete.add(username.trim().toLowerCase());
+    }
+    if (profileSlug != null && profileSlug.trim().isNotEmpty) {
+      docIdsToDelete.add(profileSlug.trim().toLowerCase());
+    }
+    docIdsToDelete.add(uid);
+
+    for (final docId in docIdsToDelete) {
+      try {
+        final docRef = _firestore.collection('public_portfolios').doc(docId);
+        final snap = await docRef.get();
+        if (snap.exists) {
+          final data = snap.data();
+          final docUid = data?['uid'] as String?;
+          // Confirm matching user before deletion
+          if (docUid == null || docUid == uid) {
+            await docRef.delete();
+            portfoliosDeleted++;
+            debugPrint('[AccountDeletion] Deleted public_portfolios/$docId');
+          }
+        }
+      } catch (e) {
+        debugPrint('[AccountDeletion] Error deleting public_portfolios/$docId: $e');
+      }
+    }
+
+    // Secondary pass: query by uid in case docId was distinct
+    try {
+      final querySnap = await _firestore
+          .collection('public_portfolios')
+          .where('uid', isEqualTo: uid)
+          .get();
+      for (final doc in querySnap.docs) {
+        try {
+          await doc.reference.delete();
+          portfoliosDeleted++;
+          debugPrint('[AccountDeletion] Deleted public_portfolios/${doc.id} (query by uid)');
+        } catch (e) {
+          debugPrint('[AccountDeletion] Error deleting portfolio ${doc.id}: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[AccountDeletion] Error querying public_portfolios by uid: $e');
+    }
+
+    return portfoliosDeleted;
+  }
+
+  /// 9. Deletes all user subcollections (projects, experience, education, certificates, presence).
+  Future<int> _deleteUserSubcollections(String uid) async {
+    int itemsDeleted = 0;
+    final subcollections = [
+      'projects',
+      'experience',
+      'education',
+      'certificates',
+      'presence',
+    ];
+
+    final batchManager = _BatchManager(_firestore);
+
+    for (final subName in subcollections) {
+      try {
+        final snap = await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection(subName)
+            .get();
+
+        for (final doc in snap.docs) {
+          batchManager.delete(doc.reference);
+          await batchManager.flushIfNeeded();
+          itemsDeleted++;
+        }
+      } catch (e) {
+        debugPrint('[AccountDeletion] Error deleting subcollection $subName: $e');
+      }
+    }
+
+    await batchManager.commit();
+    return itemsDeleted;
+  }
+
+  /// 10. Deletes the primary user document: users/{uid}
   Future<void> _deleteUserProfile(String uid) async {
     try {
       await _firestore.collection('users').doc(uid).delete();

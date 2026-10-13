@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:connecthub/core/services/portfolio_sync_service.dart';
 import 'package:connecthub/features/portfolio/data/models/project_model.dart';
 import 'package:connecthub/features/portfolio/data/models/experience_model.dart';
 import 'package:connecthub/features/portfolio/data/models/education_model.dart';
@@ -12,10 +13,12 @@ import 'package:connecthub/features/portfolio_import/presentation/cubit/portfoli
 /// Each method writes to Firestore immediately after the user confirms.
 class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   final FirebaseFirestore _db;
+  final PortfolioSyncService _syncService;
   static const _uuid = Uuid();
 
-  PortfolioEditorCubit({FirebaseFirestore? firestore})
+  PortfolioEditorCubit({FirebaseFirestore? firestore, PortfolioSyncService? syncService})
       : _db = firestore ?? FirebaseFirestore.instance,
+        _syncService = syncService ?? PortfolioSyncService(),
         super(const PortfolioEditorIdle());
 
   // ── Firestore References ──────────────────────────────────────────────────
@@ -45,7 +48,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
       if (data.isNotEmpty) {
         await _userDoc(uid).set(data, SetOptions(merge: true));
       }
-    }, successMessage: 'Profile updated.');
+    }, successMessage: 'Profile updated.', uid: uid);
   }
 
   // ── Skills ────────────────────────────────────────────────────────────────
@@ -56,7 +59,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   }) async {
     await _run(() async {
       await _userDoc(uid).set({'skills': skills}, SetOptions(merge: true));
-    }, successMessage: 'Skills saved.');
+    }, successMessage: 'Skills saved.', uid: uid);
   }
 
   // ── Projects ──────────────────────────────────────────────────────────────
@@ -68,7 +71,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
     await _run(() async {
       final id = _uuid.v4();
       await _sub(uid, 'projects').doc(id).set(project.toMap());
-    }, successMessage: 'Project added.');
+    }, successMessage: 'Project added.', uid: uid);
   }
 
   Future<void> updateProject({
@@ -77,13 +80,13 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   }) async {
     await _run(() async {
       await _sub(uid, 'projects').doc(project.id).set(project.toMap());
-    }, successMessage: 'Project updated.');
+    }, successMessage: 'Project updated.', uid: uid);
   }
 
   Future<void> deleteProject({required String uid, required String projectId}) async {
     await _run(() async {
       await _sub(uid, 'projects').doc(projectId).delete();
-    }, successMessage: 'Project deleted.');
+    }, successMessage: 'Project deleted.', uid: uid);
   }
 
   // ── Experience ────────────────────────────────────────────────────────────
@@ -95,7 +98,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
     await _run(() async {
       final id = _uuid.v4();
       await _sub(uid, 'experience').doc(id).set(experience.toMap());
-    }, successMessage: 'Experience added.');
+    }, successMessage: 'Experience added.', uid: uid);
   }
 
   Future<void> updateExperience({
@@ -104,7 +107,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   }) async {
     await _run(() async {
       await _sub(uid, 'experience').doc(experience.id).set(experience.toMap());
-    }, successMessage: 'Experience updated.');
+    }, successMessage: 'Experience updated.', uid: uid);
   }
 
   Future<void> deleteExperience({
@@ -113,7 +116,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   }) async {
     await _run(() async {
       await _sub(uid, 'experience').doc(experienceId).delete();
-    }, successMessage: 'Experience deleted.');
+    }, successMessage: 'Experience deleted.', uid: uid);
   }
 
   // ── Education ─────────────────────────────────────────────────────────────
@@ -125,7 +128,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
     await _run(() async {
       final id = _uuid.v4();
       await _sub(uid, 'education').doc(id).set(education.toMap());
-    }, successMessage: 'Education added.');
+    }, successMessage: 'Education added.', uid: uid);
   }
 
   Future<void> updateEducation({
@@ -134,7 +137,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   }) async {
     await _run(() async {
       await _sub(uid, 'education').doc(education.id).set(education.toMap());
-    }, successMessage: 'Education updated.');
+    }, successMessage: 'Education updated.', uid: uid);
   }
 
   Future<void> deleteEducation({
@@ -143,7 +146,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   }) async {
     await _run(() async {
       await _sub(uid, 'education').doc(educationId).delete();
-    }, successMessage: 'Education deleted.');
+    }, successMessage: 'Education deleted.', uid: uid);
   }
 
   // ── Certificates ──────────────────────────────────────────────────────────
@@ -155,7 +158,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
     await _run(() async {
       final id = _uuid.v4();
       await _sub(uid, 'certificates').doc(id).set(certificate.toMap());
-    }, successMessage: 'Certificate added.');
+    }, successMessage: 'Certificate added.', uid: uid);
   }
 
   Future<void> updateCertificate({
@@ -166,7 +169,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
       await _sub(uid, 'certificates')
           .doc(certificate.id)
           .set(certificate.toMap());
-    }, successMessage: 'Certificate updated.');
+    }, successMessage: 'Certificate updated.', uid: uid);
   }
 
   Future<void> deleteCertificate({
@@ -175,7 +178,7 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   }) async {
     await _run(() async {
       await _sub(uid, 'certificates').doc(certificateId).delete();
-    }, successMessage: 'Certificate deleted.');
+    }, successMessage: 'Certificate deleted.', uid: uid);
   }
 
   // ── Helper ────────────────────────────────────────────────────────────────
@@ -183,11 +186,17 @@ class PortfolioEditorCubit extends Cubit<PortfolioEditorState> {
   Future<void> _run(
     Future<void> Function() operation, {
     required String successMessage,
+    String? uid,
   }) async {
     emit(const PortfolioEditorSaving());
     try {
       await operation();
       emit(PortfolioEditorSaved(successMessage));
+      // Silently sync public portfolio in the background after every
+      // successful write — do NOT await so UI is not blocked.
+      if (uid != null && uid.isNotEmpty) {
+        _syncService.syncUserPortfolio(uid).ignore();
+      }
     } catch (e) {
       emit(PortfolioEditorError(e.toString().replaceAll('Exception: ', '')));
     } finally {

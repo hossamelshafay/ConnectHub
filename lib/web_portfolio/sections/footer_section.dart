@@ -136,15 +136,6 @@ class FooterSection extends StatelessWidget {
                         style: WebTextStyles.bodySmall(isDark: isDark),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Engineered with Flutter Web & Clean Architecture.',
-                        style: WebTextStyles.bodySmall(isDark: isDark).copyWith(
-                          color: WebColors.accent,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
                       const SizedBox(height: 14),
                       _buildSocialRow(),
                     ],
@@ -154,7 +145,7 @@ class FooterSection extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          '© ${DateTime.now().year} ${data.user.name}. Built with Flutter Web & Clean Architecture.',
+                          '© ${DateTime.now().year} ${data.user.name}. All rights reserved.',
                           style: WebTextStyles.bodySmall(isDark: isDark),
                         ),
                       ),

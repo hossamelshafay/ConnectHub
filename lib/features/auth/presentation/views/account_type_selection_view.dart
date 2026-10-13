@@ -61,81 +61,96 @@ class _AccountTypeSelectionViewState extends State<AccountTypeSelectionView> {
         ),
         body: SafeArea(
           child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
-                        Text(
-                          'What best describes your account?',
-                          style: AppTextStyles.headline1.copyWith(fontSize: 26),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Choose the account type that best fits your goals on ConnectHub.',
-                          style: AppTextStyles.body2.copyWith(
-                            color: AppColors.textSecondary,
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 360;
+              final horizontalPadding = isNarrow ? 16.0 : 24.0;
+
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: IntrinsicHeight(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 16),
+                              Text(
+                                'What best describes your account?',
+                                style: AppTextStyles.headline1.copyWith(
+                                  fontSize: isNarrow ? 22 : 26,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Choose the account type that best fits your goals on ConnectHub.',
+                                style: AppTextStyles.body2.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontSize: isNarrow ? 13 : 14,
+                                ),
+                              ),
+                              SizedBox(height: isNarrow ? 20 : 32),
+
+                              // ── Personal Account Card ────────────────────────────────────
+                              _AccountTypeCard(
+                                title: 'Personal Account',
+                                description:
+                                    'For friends, family and everyday social networking.',
+                                icon: Icons.people_outline_rounded,
+                                isSelected: _selectedType == AccountType.personal,
+                                isNarrow: isNarrow,
+                                onTap: () =>
+                                    setState(() => _selectedType = AccountType.personal),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // ── Professional Account Card ────────────────────────────────
+                              _AccountTypeCard(
+                                title: 'Professional Account',
+                                description:
+                                    'Create an AI-powered portfolio showcasing your experience, education, projects and achievements.',
+                                icon: Icons.work_outline_rounded,
+                                badge: 'Portfolio',
+                                isSelected: _selectedType == AccountType.professional,
+                                isNarrow: isNarrow,
+                                onTap: () =>
+                                    setState(() => _selectedType = AccountType.professional),
+                              ),
+
+                              const Spacer(),
+                              const SizedBox(height: 24),
+
+                              BlocBuilder<AuthCubit, AuthState>(
+                                builder: (context, state) {
+                                  return PrimaryButton(
+                                    text: 'Create Account',
+                                    isLoading: state is AuthLoading,
+                                    onPressed: () {
+                                      context.read<AuthCubit>().signUp(
+                                            name: widget.name,
+                                            email: widget.email,
+                                            password: widget.password,
+                                            accountType: _selectedType,
+                                          );
+                                    },
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 32),
-
-                        // ── Personal Account Card ────────────────────────────────────
-                        _AccountTypeCard(
-                          title: 'Personal Account',
-                          description:
-                              'For friends, family and everyday social networking.',
-                          icon: Icons.people_outline_rounded,
-                          isSelected: _selectedType == AccountType.personal,
-                          onTap: () =>
-                              setState(() => _selectedType = AccountType.personal),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ── Professional Account Card ────────────────────────────────
-                        _AccountTypeCard(
-                          title: 'Professional Account',
-                          description:
-                              'Create an AI-powered portfolio showcasing your experience, education, projects and achievements.',
-                          icon: Icons.work_outline_rounded,
-                          badge: 'Portfolio',
-                          isSelected: _selectedType == AccountType.professional,
-                          onTap: () =>
-                              setState(() => _selectedType = AccountType.professional),
-                        ),
-
-                        const Spacer(),
-                        const SizedBox(height: 24),
-
-                        BlocBuilder<AuthCubit, AuthState>(
-                          builder: (context, state) {
-                            return PrimaryButton(
-                              text: 'Create Account',
-                              isLoading: state is AuthLoading,
-                              onPressed: () {
-                                context.read<AuthCubit>().signUp(
-                                      name: widget.name,
-                                      email: widget.email,
-                                      password: widget.password,
-                                      accountType: _selectedType,
-                                    );
-                              },
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -149,6 +164,7 @@ class _AccountTypeCard extends StatelessWidget {
   final IconData icon;
   final String? badge;
   final bool isSelected;
+  final bool isNarrow;
   final VoidCallback onTap;
 
   const _AccountTypeCard({
@@ -157,6 +173,7 @@ class _AccountTypeCard extends StatelessWidget {
     required this.icon,
     this.badge,
     required this.isSelected,
+    this.isNarrow = false,
     required this.onTap,
   });
 
@@ -167,7 +184,7 @@ class _AccountTypeCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isNarrow ? 14 : 20),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.06)
@@ -190,7 +207,7 @@ class _AccountTypeCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(isNarrow ? 10 : 12),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primary
@@ -200,27 +217,30 @@ class _AccountTypeCard extends StatelessWidget {
               child: Icon(
                 icon,
                 color: isSelected ? Colors.white : AppColors.textPrimary,
-                size: 24,
+                size: isNarrow ? 20 : 24,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: isNarrow ? 12 : 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       Text(
                         title,
                         style: AppTextStyles.body1.copyWith(
                           fontWeight: FontWeight.w700,
+                          fontSize: isNarrow ? 14 : 16,
                           color: isSelected
                               ? AppColors.primary
                               : AppColors.textPrimary,
                         ),
                       ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 8),
+                      if (badge != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
@@ -237,7 +257,6 @@ class _AccountTypeCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -245,6 +264,7 @@ class _AccountTypeCard extends StatelessWidget {
                     description,
                     style: AppTextStyles.body2.copyWith(
                       color: AppColors.textSecondary,
+                      fontSize: isNarrow ? 12 : 14,
                       height: 1.35,
                     ),
                   ),
@@ -253,8 +273,8 @@ class _AccountTypeCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Container(
-              width: 22,
-              height: 22,
+              width: isNarrow ? 18 : 22,
+              height: isNarrow ? 18 : 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
@@ -264,7 +284,7 @@ class _AccountTypeCard extends StatelessWidget {
                 color: isSelected ? AppColors.primary : Colors.transparent,
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? Icon(Icons.check, size: isNarrow ? 12 : 14, color: Colors.white)
                   : null,
             ),
           ],

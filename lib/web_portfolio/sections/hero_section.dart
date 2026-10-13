@@ -91,10 +91,11 @@ class HeroSection extends StatelessWidget {
                   ],
                 ),
 
-              const SizedBox(height: 60),
-
-              // Stats bar
-              _buildStatsContainer(screenWidth),
+              // Stats bar (shown only if real user records exist)
+              if (data.stats.isNotEmpty) ...[
+                const SizedBox(height: 60),
+                _buildStatsContainer(screenWidth),
+              ],
             ],
           );
         },
@@ -103,53 +104,18 @@ class HeroSection extends StatelessWidget {
   }
 
   Widget _buildIntroContent(BuildContext context, {required bool isMobile}) {
+    final bioText = (data.user.about != null && data.user.about!.trim().isNotEmpty)
+        ? data.user.about!.trim()
+        : (data.user.bio != null && data.user.bio!.trim().isNotEmpty)
+            ? data.user.bio!.trim()
+            : (data.user.headline != null && data.user.headline!.trim().isNotEmpty)
+                ? data.user.headline!.trim()
+                : null;
+
     return Column(
       crossAxisAlignment:
           isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
-        // Availability pill
-        EntranceFader(
-          offset: const Offset(0, 12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: WebColors.emeraldAccent.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: WebColors.emeraldAccent.withValues(alpha: 0.30),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: WebColors.emeraldAccent,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    'AVAILABLE FOR NEW OPPORTUNITIES',
-                    style: WebTextStyles.sectionSubtitle(isDark: isDark).copyWith(
-                      color: WebColors.emeraldAccent,
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
         // Hello, I'm
         EntranceFader(
           delay: const Duration(milliseconds: 100),
@@ -181,56 +147,57 @@ class HeroSection extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Typing role
-        EntranceFader(
-          delay: const Duration(milliseconds: 250),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment:
-                isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
-            children: [
-              const Text(
-                '— ',
-                style: TextStyle(
-                  color: WebColors.textMuted,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w300,
-                ),
-              ),
-              Flexible(
-                child: TypingTextAnimation(
-                  texts: data.roleTitles,
-                  textStyle: WebTextStyles.cardTitle(isDark: isDark).copyWith(
-                    fontSize: isMobile ? 16 : 21,
-                    fontWeight: FontWeight.w400,
-                    color: WebColors.primaryLight,
-                    letterSpacing: 0.2,
+        if (data.roleTitles.isNotEmpty) ...[
+          EntranceFader(
+            delay: const Duration(milliseconds: 250),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment:
+                  isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
+              children: [
+                const Text(
+                  '— ',
+                  style: TextStyle(
+                    color: WebColors.textMuted,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w300,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Bio text
-        EntranceFader(
-          delay: const Duration(milliseconds: 350),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 580),
-            child: Text(
-              (data.user.about != null && data.user.about!.trim().isNotEmpty)
-                  ? data.user.about!
-                  : (data.user.bio != null && data.user.bio!.trim().isNotEmpty)
-                      ? data.user.bio!
-                      : (data.user.headline ?? ''),
-              textAlign: isMobile ? TextAlign.center : TextAlign.start,
-              style: isMobile
-                  ? WebTextStyles.bodyMedium(isDark: isDark).copyWith(fontSize: 14)
-                  : WebTextStyles.bodyLarge(isDark: isDark),
+                Flexible(
+                  child: TypingTextAnimation(
+                    texts: data.roleTitles,
+                    textStyle: WebTextStyles.cardTitle(isDark: isDark).copyWith(
+                      fontSize: isMobile ? 16 : 21,
+                      fontWeight: FontWeight.w400,
+                      color: WebColors.primaryLight,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 36),
+          const SizedBox(height: 20),
+        ],
+
+        // Bio text (only rendered if user has provided real bio/about/headline)
+        if (bioText != null) ...[
+          EntranceFader(
+            delay: const Duration(milliseconds: 350),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 580),
+              child: Text(
+                bioText,
+                textAlign: isMobile ? TextAlign.center : TextAlign.start,
+                style: isMobile
+                    ? WebTextStyles.bodyMedium(isDark: isDark).copyWith(fontSize: 14)
+                    : WebTextStyles.bodyLarge(isDark: isDark),
+              ),
+            ),
+          ),
+          const SizedBox(height: 36),
+        ] else
+          const SizedBox(height: 20),
 
         // CTAs + socials
         EntranceFader(

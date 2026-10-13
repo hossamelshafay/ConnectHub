@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:dio/dio.dart';
 import 'package:connecthub/features/portfolio_import/data/models/cv_portfolio_model.dart';
 
@@ -7,9 +8,20 @@ sealed class PortfolioImportFailure {
   const PortfolioImportFailure();
 }
 
-class NetworkFailure extends PortfolioImportFailure {
+class AiServiceUnavailableFailure extends PortfolioImportFailure {
   final String message;
-  const NetworkFailure(this.message);
+  const AiServiceUnavailableFailure([
+    this.message =
+        'The AI service is temporarily unavailable. Make sure the AI backend server is running on port 8000, or enter your portfolio details manually.',
+  ]);
+}
+
+class TimeoutFailure extends PortfolioImportFailure {
+  final String message;
+  const TimeoutFailure([
+    this.message =
+        'The AI request timed out while processing your CV. Please try again with a smaller file or try again later.',
+  ]);
 }
 
 class ValidationFailure extends PortfolioImportFailure {
@@ -23,8 +35,9 @@ class ServerFailure extends PortfolioImportFailure {
   const ServerFailure(this.statusCode, this.message);
 }
 
-class TimeoutFailure extends PortfolioImportFailure {
-  const TimeoutFailure();
+class NetworkFailure extends PortfolioImportFailure {
+  final String message;
+  const NetworkFailure(this.message);
 }
 
 /// Abstract contract for the portfolio import repository.
@@ -36,19 +49,41 @@ abstract class PortfolioImportRepo {
 /// Implementation: sends a multipart request to POST /portfolio/upload-cv.
 class PortfolioImportRepoImp implements PortfolioImportRepo {
   final Dio _dio;
+  final List<String> _candidateBaseUrls;
 
-  // Backend URL — actual host machine IP on local network.
-  // Overridable via --dart-define=AI_BACKEND_URL=http://...:8000
-  static const String defaultBaseUrl = String.fromEnvironment(
-    'AI_BACKEND_URL',
-    defaultValue: 'http://192.168.1.11:8000',
-  );
+  static const String configuredUrl = String.fromEnvironment('AI_BACKEND_URL');
 
-  PortfolioImportRepoImp({Dio? dio, String baseUrl = defaultBaseUrl})
-      : _dio = dio ??
+  static List<String> resolveCandidateUrls() {
+    if (configuredUrl.isNotEmpty) {
+      return [configuredUrl];
+    }
+
+    final candidates = <String>[];
+    if (kIsWeb) {
+      candidates.add('http://127.0.0.1:8000');
+      candidates.add('http://localhost:8000');
+    } else {
+      if (Platform.isAndroid) {
+        // Physical device Wi-Fi IP first, then Android emulator loopback, then localhost
+        candidates.add('http://192.168.1.9:8000');
+        candidates.add('http://10.0.2.2:8000');
+        candidates.add('http://127.0.0.1:8000');
+      } else {
+        candidates.add('http://127.0.0.1:8000');
+        candidates.add('http://localhost:8000');
+        candidates.add('http://192.168.1.9:8000');
+      }
+    }
+    return candidates;
+  }
+
+  PortfolioImportRepoImp({Dio? dio, String? baseUrl})
+      : _candidateBaseUrls = baseUrl != null && baseUrl.isNotEmpty
+            ? [baseUrl]
+            : resolveCandidateUrls(),
+        _dio = dio ??
             Dio(BaseOptions(
-              baseUrl: baseUrl,
-              connectTimeout: const Duration(seconds: 60),
+              connectTimeout: const Duration(seconds: 45),
               receiveTimeout: const Duration(seconds: 180),
               sendTimeout: const Duration(seconds: 120),
               headers: {'Accept': 'application/json'},
@@ -56,81 +91,69 @@ class PortfolioImportRepoImp implements PortfolioImportRepo {
 
   @override
   Future<CvPortfolioModel> uploadCv(File file) async {
-    final startTime = DateTime.now();
     final fileName = file.path.split('/').last.split('\\').last;
-    final fileSize = await file.length();
     const endpoint = '/portfolio/upload-cv';
-    final fullUrl = '${_dio.options.baseUrl}$endpoint';
 
-    // ignore: avoid_print
-    print('================================================================');
-    // ignore: avoid_print
-    print('[PortfolioImport] --- Upload Request Debug Info ---');
-    // ignore: avoid_print
-    print('[PortfolioImport] Base URL: ${_dio.options.baseUrl}');
-    // ignore: avoid_print
-    print('[PortfolioImport] Full URL: $fullUrl');
-    // ignore: avoid_print
-    print('[PortfolioImport] Request Method: POST');
-    // ignore: avoid_print
-    print('[PortfolioImport] Headers: ${_dio.options.headers}');
-    // ignore: avoid_print
-    print('[PortfolioImport] Timeout Values: '
-        'connectTimeout=${_dio.options.connectTimeout?.inSeconds}s, '
-        'sendTimeout=${_dio.options.sendTimeout?.inSeconds}s, '
-        'receiveTimeout=${_dio.options.receiveTimeout?.inSeconds}s');
-    // ignore: avoid_print
-    print('[PortfolioImport] Content-Type: multipart/form-data (file: application/pdf)');
-    // ignore: avoid_print
-    print('[PortfolioImport] [Timeline - Start]: $startTime');
-    // ignore: avoid_print
-    print('[PortfolioImport] [Timeline - File]: $fileName ($fileSize bytes / ${(fileSize / 1024).toStringAsFixed(1)} KB)');
-    // ignore: avoid_print
-    print('================================================================');
+    DioException? lastConnectionException;
 
-    try {
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          file.path,
-          filename: fileName,
-          contentType: DioMediaType('application', 'pdf'),
-        ),
-      });
+    // Try each candidate URL until connection succeeds or exhausted
+    for (int i = 0; i < _candidateBaseUrls.length; i++) {
+      final currentBaseUrl = _candidateBaseUrls[i];
+      final fullUrl = '$currentBaseUrl$endpoint';
+      final startTime = DateTime.now();
 
-      final response = await _dio.post<Map<String, dynamic>>(
-        endpoint,
-        data: formData,
-        onSendProgress: (sent, total) {
-          if (total > 0) {
-            final progress = (sent / total * 100).toStringAsFixed(1);
-            // ignore: avoid_print
-            print('[PortfolioImport] [Timeline - Progress]: $sent / $total bytes ($progress%) at ${DateTime.now()}');
-          }
-        },
-      );
-
-      final arrivalTime = DateTime.now();
-      final elapsed = arrivalTime.difference(startTime);
       // ignore: avoid_print
-      print('[PortfolioImport] [Timeline - Response Arrival]: $arrivalTime (status: ${response.statusCode})');
-      // ignore: avoid_print
-      print('[PortfolioImport] [Timeline - Total Elapsed]: ${elapsed.inMilliseconds} ms (${(elapsed.inMilliseconds / 1000).toStringAsFixed(2)} s)');
+      print('[PortfolioImport] Attempting candidate #$i: $fullUrl');
 
-      final data = response.data;
-      if (data == null) {
-        throw const ServerFailure(500, 'Empty response from server.');
+      try {
+        final formData = FormData.fromMap({
+          'file': await MultipartFile.fromFile(
+            file.path,
+            filename: fileName,
+            contentType: DioMediaType('application', 'pdf'),
+          ),
+        });
+
+        final response = await _dio.post<Map<String, dynamic>>(
+          fullUrl,
+          data: formData,
+          onSendProgress: (sent, total) {
+            if (total > 0) {
+              final progress = (sent / total * 100).toStringAsFixed(1);
+              // ignore: avoid_print
+              print('[PortfolioImport] Progress: $sent/$total ($progress%)');
+            }
+          },
+        );
+
+        final arrivalTime = DateTime.now();
+        final elapsed = arrivalTime.difference(startTime);
+        // ignore: avoid_print
+        print('[PortfolioImport] Success via $currentBaseUrl in ${elapsed.inMilliseconds} ms (status: ${response.statusCode})');
+
+        final data = response.data;
+        if (data == null) {
+          throw const ServerFailure(500, 'Empty response from server.');
+        }
+
+        final payload = data['data'] as Map<String, dynamic>? ?? data;
+        return CvPortfolioModel.fromJson(payload);
+      } on DioException catch (e) {
+        if (e.type == DioExceptionType.connectionError && i + 1 < _candidateBaseUrls.length) {
+          // ignore: avoid_print
+          print('[PortfolioImport] Connection failed on $currentBaseUrl, trying next candidate...');
+          lastConnectionException = e;
+          continue;
+        }
+        _handleDioError(e);
       }
-
-      // Backend wraps result in ApiResponse { data: {...} }
-      final payload = data['data'] as Map<String, dynamic>? ?? data;
-      return CvPortfolioModel.fromJson(payload);
-    } on DioException catch (e) {
-      final failTime = DateTime.now();
-      final elapsed = failTime.difference(startTime);
-      // ignore: avoid_print
-      print('[PortfolioImport] [Timeline - Request Failed]: $failTime after ${elapsed.inMilliseconds} ms with ${e.type}: ${e.message}');
-      _handleDioError(e);
     }
+
+    if (lastConnectionException != null) {
+      _handleDioError(lastConnectionException);
+    }
+
+    throw const AiServiceUnavailableFailure();
   }
 
   Never _handleDioError(DioException e) {
@@ -140,15 +163,17 @@ class PortfolioImportRepoImp implements PortfolioImportRepo {
       case DioExceptionType.receiveTimeout:
         throw const TimeoutFailure();
       case DioExceptionType.connectionError:
-        throw NetworkFailure(
-          e.message ?? 'Cannot connect to the AI engine. Is it running?',
+        throw const AiServiceUnavailableFailure(
+          'The AI CV parsing service is temporarily unavailable. Make sure the backend server is running on port 8000, or enter your portfolio details manually.',
         );
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode ?? 0;
         final detail = _extractDetail(e.response?.data);
         throw ServerFailure(statusCode, detail);
       default:
-        throw NetworkFailure(e.message ?? 'An unexpected error occurred.');
+        throw NetworkFailure(
+          e.message ?? 'A network communication error occurred with the AI service.',
+        );
     }
   }
 
@@ -156,8 +181,8 @@ class PortfolioImportRepoImp implements PortfolioImportRepo {
     if (data is Map) {
       return (data['detail'] as String?) ??
           (data['message'] as String?) ??
-          'Server returned an error.';
+          'AI server returned an error.';
     }
-    return 'Server returned an error.';
+    return 'AI server returned an error.';
   }
 }

@@ -74,11 +74,14 @@ class PublicPortfolioRemoteDataSourceImpl implements PublicPortfolioRemoteDataSo
         .where((c) => c.isVisible)
         .toList();
 
-    // 3. Determine document ID: username or fallback to uid
+    // 3. Determine document ID: username, profileSlug, or fallback to uid
     final rawUsername = user.username?.trim();
+    final rawSlug = user.profileSlug?.trim();
     final docId = (rawUsername != null && rawUsername.isNotEmpty)
         ? rawUsername.toLowerCase()
-        : user.uid;
+        : (rawSlug != null && rawSlug.isNotEmpty)
+            ? rawSlug.toLowerCase()
+            : user.uid;
 
     // 4. Generate permanent public URL using PortfolioConfig
     final publicUrl = PortfolioConfig.buildUrl(docId);
@@ -92,6 +95,7 @@ class PublicPortfolioRemoteDataSourceImpl implements PublicPortfolioRemoteDataSo
     final snapshot = PublicPortfolioSnapshot(
       uid: user.uid,
       username: user.username,
+      profileSlug: user.profileSlug,
       name: user.name,
       email: user.email,
       headline: user.headline,
@@ -178,6 +182,16 @@ class PublicPortfolioRemoteDataSourceImpl implements PublicPortfolioRemoteDataSo
           .get();
       if (usernameQuery.docs.isNotEmpty) {
         return PublicPortfolioSnapshot.fromDoc(usernameQuery.docs.first);
+      }
+
+      // 5. Fallback: Query where profileSlug == cleanId (lowercased)
+      final slugQuery = await _firestore
+          .collection('public_portfolios')
+          .where('profileSlug', isEqualTo: cleanId.toLowerCase())
+          .limit(1)
+          .get();
+      if (slugQuery.docs.isNotEmpty) {
+        return PublicPortfolioSnapshot.fromDoc(slugQuery.docs.first);
       }
 
       return null;

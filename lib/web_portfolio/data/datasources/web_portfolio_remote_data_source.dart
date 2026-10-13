@@ -60,10 +60,6 @@ class WebPortfolioRemoteDataSourceImpl implements WebPortfolioRemoteDataSource {
             return PublicPortfolioSnapshot.fromDoc(uidQuery.docs.first);
           }
         }
-        final defaultDocs = await _firestore.collection('public_portfolios').limit(1).get();
-        if (defaultDocs.docs.isNotEmpty) {
-          return PublicPortfolioSnapshot.fromDoc(defaultDocs.docs.first);
-        }
         return null;
       }
 
@@ -85,7 +81,7 @@ class WebPortfolioRemoteDataSourceImpl implements WebPortfolioRemoteDataSource {
         return PublicPortfolioSnapshot.fromDoc(docExact);
       }
 
-      // 3. Fallback: Query where uid == cleanId
+      // 3. Query where uid == cleanId
       final uidQuery = await _firestore
           .collection('public_portfolios')
           .where('uid', isEqualTo: cleanId)
@@ -95,7 +91,7 @@ class WebPortfolioRemoteDataSourceImpl implements WebPortfolioRemoteDataSource {
         return PublicPortfolioSnapshot.fromDoc(uidQuery.docs.first);
       }
 
-      // 4. Fallback: Query where username == cleanId (lowercased)
+      // 4. Query where username == cleanId (lowercased)
       final usernameQuery = await _firestore
           .collection('public_portfolios')
           .where('username', isEqualTo: cleanId.toLowerCase())
@@ -103,6 +99,16 @@ class WebPortfolioRemoteDataSourceImpl implements WebPortfolioRemoteDataSource {
           .get();
       if (usernameQuery.docs.isNotEmpty) {
         return PublicPortfolioSnapshot.fromDoc(usernameQuery.docs.first);
+      }
+
+      // 5. Query where profileSlug == cleanId (lowercased)
+      final slugQuery = await _firestore
+          .collection('public_portfolios')
+          .where('profileSlug', isEqualTo: cleanId.toLowerCase())
+          .limit(1)
+          .get();
+      if (slugQuery.docs.isNotEmpty) {
+        return PublicPortfolioSnapshot.fromDoc(slugQuery.docs.first);
       }
 
       return null;
@@ -179,12 +185,6 @@ class WebPortfolioRemoteDataSourceImpl implements WebPortfolioRemoteDataSource {
         if (currentDoc.exists) {
           return UserModel.fromDoc(currentDoc);
         }
-      }
-
-      // Case 3: Default fallback -> Retrieve the first registered public user
-      final defaultUsers = await _firestore.collection('users').limit(1).get();
-      if (defaultUsers.docs.isNotEmpty) {
-        return UserModel.fromDoc(defaultUsers.docs.first);
       }
 
       return null;

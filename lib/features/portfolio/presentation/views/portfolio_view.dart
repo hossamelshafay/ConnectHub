@@ -1107,19 +1107,31 @@ class _ContactCard extends StatelessWidget {
         !url.startsWith('mailto:')) {
       url = 'https://$url';
     }
-    final uri = Uri.parse(url);
+    debugPrint('[PortfolioView] Launching URL: $url');
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid URL: $url')),
+        );
+      }
+      return;
+    }
     try {
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        if (context.mounted) {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        final launchedFallback = await launchUrl(uri, mode: LaunchMode.platformDefault);
+        if (!launchedFallback && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open $url')),
+            SnackBar(content: Text('Could not open: $url')),
           );
         }
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PortfolioView] launchUrl error: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open $url')),
+          SnackBar(content: Text('Failed to open: $e')),
         );
       }
     }

@@ -68,14 +68,18 @@ class _PortfolioGeneratedDialogState extends State<PortfolioGeneratedDialog>
   }
 
   Future<void> _openWebsite() async {
+    final url = widget.publicUrl.trim();
+    debugPrint('[PortfolioGeneratedDialog] Opening website: $url');
+    if (url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) return;
     try {
-      final uri = Uri.parse(widget.publicUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uri);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
+      debugPrint('[PortfolioGeneratedDialog] launchUrl error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -6,6 +6,7 @@ import '../models/portfolio_view_data.dart';
 import '../widgets/responsive_container.dart';
 import '../widgets/web_section_header.dart';
 import '../widgets/tech_badge.dart';
+import '../widgets/section_empty_state.dart';
 import '../animations/animated_progress_bar.dart';
 import '../animations/entrance_fader.dart';
 import '../responsive/responsive.dart';
@@ -44,9 +45,7 @@ class SkillsSection extends StatelessWidget {
     }
     final toolsAndTech = gatheredTools.toList();
 
-    if (data.skills.isEmpty && toolsAndTech.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final bool isEmpty = data.skills.isEmpty && toolsAndTech.isEmpty;
 
     return ResponsiveContainer(
       padding: EdgeInsets.symmetric(
@@ -57,16 +56,21 @@ class SkillsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           WebSectionHeader(
-            eyebrow: 'Technical Mastery',
-            title: 'Skills & Proficiencies',
-            subtitle:
-                'Demonstrated core competencies across mobile architecture, reactive state management, '
-                'cloud infrastructure, and DevOps pipelines.',
+            eyebrow: 'Skills',
+            title: 'Skills',
+            subtitle: null,
             isDark: isDark,
           ),
 
-          // Categories: Adaptive Grid
-          if (categorizedSkills.isNotEmpty)
+          if (isEmpty)
+            SectionEmptyState(
+              icon: Icons.psychology_outlined,
+              message: 'No skills added yet.',
+              isDark: isDark,
+            )
+          else ...[
+            // Categories: Adaptive Grid
+            if (categorizedSkills.isNotEmpty)
             ResponsiveGrid(
               maxCrossAxisExtent: 340,
               crossAxisSpacing: 20,
@@ -134,9 +138,10 @@ class SkillsSection extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   Widget _buildSkillCategoryCard(String categoryName, List<SkillItem> skills) {
     return Container(

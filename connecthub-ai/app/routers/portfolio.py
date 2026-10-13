@@ -20,6 +20,7 @@ from app.dependencies.services import get_portfolio_service
 from app.schemas.api_response import ApiResponse
 from app.schemas.cv_portfolio_schema import CVPortfolio
 from app.schemas.error_response import ErrorResponse
+from app.schemas.website_schema import WebsitePortfolioInput, WebsitePortfolioOutput
 from app.services.portfolio_service import PortfolioService
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
@@ -101,3 +102,47 @@ async def upload_cv(
         data=portfolio_data,
         version=settings.version,
     )
+
+
+@router.post(
+    "/generate-website",
+    response_model=ApiResponse[WebsitePortfolioOutput],
+    status_code=status.HTTP_200_OK,
+    summary="Generate / format portfolio website data strictly from Firebase data without hallucinations",
+    description=(
+        "Formats and structures existing user portfolio data for website presentation. "
+        "Adheres strictly to the Zero-Hallucination Policy: missing or empty sections "
+        "remain completely empty. Never fabricates work experience, projects, skills, "
+        "education, or certificates."
+    ),
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Website portfolio formatted successfully.",
+        },
+        status.HTTP_502_BAD_GATEWAY: {
+            "description": "AI hallucination detected and rejected or service failure.",
+            "model": ErrorResponse,
+        },
+    },
+)
+async def generate_website(
+    request: Request,
+    payload: WebsitePortfolioInput,
+    portfolio_service: PortfolioService = Depends(get_portfolio_service),
+) -> ApiResponse[WebsitePortfolioOutput]:
+    """
+    Handle portfolio website generation / formatting request.
+    Delegates to PortfolioService with strict fidelity verification.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    result = await portfolio_service.generate_website_portfolio(
+        raw_portfolio_data=payload,
+        client_ip=client_ip,
+    )
+    return ApiResponse[WebsitePortfolioOutput](
+        success=True,
+        message="Portfolio website data generated successfully with zero fabrication.",
+        data=result,
+        version=settings.version,
+    )
+

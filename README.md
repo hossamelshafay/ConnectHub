@@ -63,13 +63,48 @@ The AI pipeline enforces a **zero-hallucination policy** — Gemini output is cr
 
 ## 📸 Screenshots
 
-| Social Feed | AI Chatbot |
-| :---: | :---: |
-| ![Social Feed](assets/screenshots/feed.jpg) | ![AI Chatbot](assets/screenshots/chat-bot.jpg) |
-| **AI CV Analyzer** | **Generated Portfolio Website** |
-| ![AI CV Analyzer](assets/screenshots/upload-cv.jpg) | ![Portfolio Website](assets/screenshots/website.png) |
-| **Real-time Chat** | **User Profile** |
-| ![Real-time Chat](assets/screenshots/users-chat.jpg) | ![User Profile](assets/screenshots/profile.jpg) |
+<br/>
+
+<!-- Mobile Screenshots -->
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" style="padding: 16px;">
+        <p><strong>🏠 Social Feed</strong></p>
+        <img src="assets/screenshots/feed.jpg" width="230" alt="Social Feed"/>
+      </td>
+      <td align="center" style="padding: 16px;">
+        <p><strong>🤖 AI Chatbot</strong></p>
+        <img src="assets/screenshots/chat-bot.jpg" width="230" alt="AI Chatbot"/>
+      </td>
+      <td align="center" style="padding: 16px;">
+        <p><strong>📄 AI CV Analyzer</strong></p>
+        <img src="assets/screenshots/upload-cv.jpg" width="230" alt="AI CV Analyzer"/>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding: 16px;">
+        <p><strong>💬 Real-time Chat</strong></p>
+        <img src="assets/screenshots/users-chat.jpg" width="230" alt="Real-time Chat"/>
+      </td>
+      <td align="center" style="padding: 16px;">
+        <p><strong>👤 User Profile</strong></p>
+        <img src="assets/screenshots/profile.jpg" width="230" alt="User Profile"/>
+      </td>
+      <td align="center" style="padding: 16px;"></td>
+    </tr>
+  </table>
+</div>
+
+<br/>
+
+---
+
+<!-- Portfolio Website Screenshot -->
+<div align="center">
+  <p><strong>🌐 Portfolio Website</strong></p>
+  <img src="assets/screenshots/website.png" width="900" alt="Generated Portfolio Website"/>
+</div>
 
 ---
 

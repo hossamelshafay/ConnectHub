@@ -1,0 +1,178 @@
+﻿%-------------------------
+% Resume in Latex
+% Author : Hossam Elshafay (Reduced Repetition — Varied Verbs, Grammar Polished)
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\input{glyphtounicode}
+\pdfgentounicode=1
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Margins
+\addtolength{\oddsidemargin}{-0.6in}
+\addtolength{\textwidth}{1.2in}
+\addtolength{\topmargin}{-0.7in}
+\addtolength{\textheight}{1.4in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+
+% Section Format
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large\bfseries
+}{}{0em}{\color{black}}[\titlerule \vspace{-5pt}]
+
+% Custom commands
+\newcommand{\resumeItem}[1]{\item[$\circ$]\small{#1}}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+  \begin{tabular*}{1.0\textwidth}[t]{l@{\extracolsep{\fill}}r}
+  \textbf{#1} & \textbf{\small #2} \\
+  \textit{\small #3} & \textit{\small #4}
+  \end{tabular*}\vspace{-6pt}
+}
+\newcommand{\resumeProjectHeading}[2]{
+  \item
+  \begin{tabular*}{1.0\textwidth}[t]{l@{\extracolsep{\fill}}r}
+  \small{\textbf{#1}} & \textbf{\small #2}
+  \end{tabular*}\vspace{-7pt}
+}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0in,label={}]} 
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+{\Huge \scshape Hossam Elshafay} \\ \vspace{2pt}
+Egypt, Elmahalla El-Kubra \\ \vspace{2pt}
+\small
+\faPhone\ +201124554574 ~ 
+\href{mailto:hossamelshafay@hotmail.com}{\faEnvelope\ \underline{hossamelshafay@hotmail.com}} ~
+\href{https://www.linkedin.com/in/hossam-elshafay-067595368}{\faLinkedin\ \underline{hossam-elshafay-067595368}} ~
+\href{https://github.com/hossamelshafay}{\faGithub\ \underline{hossamelshafay}}
+\end{center}
+
+%-----------Education-----------
+\section{Education}
+\resumeSubHeadingListStart
+\resumeSubheading
+{New Mansoura University}{2023 -- 2027}
+{Bachelor of Science in Computer Science}{}
+\resumeSubHeadingListEnd
+
+%-----------Summary-----------
+\section{Summary}
+\small{
+Flutter Developer with practical experience designing and delivering mobile apps from concept to release. Proficient in Dart, Bloc/Cubit, MVVM architecture, Firebase, and Supabase. Committed to clean, maintainable code and steady improvements in app stability and user experience.
+}
+
+%-----------Experience-----------
+\section{Experience}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Creativa Hub Mansoura}{Apr 2025 -- Jul 2025}{Flutter Trainee}{}
+\resumeItemListStart
+\resumeItem{Built and refined several Flutter apps during training, applying Dart, OOP, and clean code principles.}
+\resumeItem{Streamlined debugging workflows, cutting issue turnaround by about \textbf{10\%}.}
+\resumeItem{Collaborated via Git and GitHub on small team projects, improving coordination and delivery.}
+\resumeItemListEnd
+
+\resumeSubheading
+{Google Developers}{Apr 2025 -- Sep 2025}{Flutter Developer Trainee}{}
+\resumeItemListStart
+\resumeItem{Engineered and launched two full-stack Flutter apps using MVVM and Bloc for pilot users.}
+\resumeItem{Integrated Firebase \& Supabase to enhance backend reliability, reducing data-sync latency by \textbf{15\%}.}
+\resumeItem{Contributed to REST API integration and Agile sprint workflows, delivering most assigned features on schedule.}
+\resumeItemListEnd
+
+\resumeSubheading
+{Infosis}{Sep 2025 -- Dec 2025}{Flutter Developer}{}
+\resumeItemListStart
+\resumeItem{Contributed to production apps used by several hundred users, focusing on reliability and performance.}
+\resumeItem{Implemented secure authentication and cloud synchronization to increase data consistency.}
+\resumeItem{Refactored rendering and caching strategies to improve perceived responsiveness and reduce memory usage.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------Projects-----------
+\section{Projects}
+\resumeSubHeadingListStart
+
+\resumeProjectHeading{E-Commerce App}{}
+\resumeItemListStart
+\resumeItem{Designed a complete store system including cart, orders, authentication, and checkout modules.}
+\resumeItem{Integrated Firebase Auth, SQLite caching, and REST APIs to manage a medium-sized product catalog.}
+\resumeItem{Applied MVVM + Bloc architecture with Google Maps integration to streamline the checkout flow.}
+\resumeItemListEnd
+
+\resumeProjectHeading{SaveIt — Finance App}{}
+\resumeItemListStart
+\resumeItem{Created a personal finance tracker with goals, analytics, reminders, and offline mode.}
+\resumeItem{Synchronized cloud data via Firebase and ensured consistent offline access with local storage.}
+\resumeItem{Organized the codebase with modular design for easier maintenance and future features.}
+\resumeItemListEnd
+
+\resumeProjectHeading{ConnectHub --- AI Social Networking Platform}{Jul 2025 -- Dec 2025}
+\resumeItemListStart
+\resumeItem{Architected a full-stack social networking platform in Flutter using Feature-First Clean Architecture with Bloc/Cubit for predictable, testable state management across 14 independent feature modules.}
+\resumeItem{Integrated Firebase Authentication, Cloud Firestore, and Firebase Storage for real-time data synchronization, secure user sessions, and cloud media hosting.}
+\resumeItem{Implemented a real-time chat system with 1-on-1 conversations, read receipts, and message reply/edit/delete capabilities, backed by Firestore snapshot listeners for zero-latency delivery.}
+\resumeItem{Built an AI-powered CV analyzer using a FastAPI microservice and Google Gemini 2.5 Flash that extracts, validates, and imports structured portfolio data from uploaded PDFs with a zero-hallucination policy.}
+\resumeItem{Developed an AI chatbot assistant, AI caption generator, and AI bio generator integrated via REST API, enriching the user experience with contextual AI responses.}
+\resumeItem{Engineered a one-tap portfolio website generator that compiles user profile data into a Firestore snapshot and publishes a live public portfolio page on Firebase Hosting with a permanent shareable URL.}
+\resumeItem{Delivered social features including posts with image uploads, likes, threaded comments, follow/unfollow with real-time counters, user search, and in-app notifications.}
+\resumeItem{Optimized performance through CachedNetworkImage, Hive offline caching, shimmer skeleton screens for all major surfaces, and lazy-loaded Firestore queries with composite indexes.}
+\resumeItem{Designed a reusable widget library and implemented adaptive Light/Dark theming with animated transitions, maintaining a consistent responsive UI across all screen sizes.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------Certifications-----------
+\section{Certifications}
+\begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Google Developers - CIC} — Flutter Program (2025) \\
+     \textbf{Creativa Tech Hub — ITI Flutter Training} (2025) \\
+     \textbf{ITI Mansoura} --- Flutter Mobile Application Development (2026) \\
+    }}
+\end{itemize}
+
+%-----------Skills-----------
+\section{Technical Skills}
+\small{
+\textbf{Languages:} Dart, C++ \\
+\textbf{Frameworks:} Flutter, Firebase, Supabase \\
+\textbf{Architecture:} MVVM, Clean Architecture, Modular Design \\
+\textbf{State Management:} Bloc, Cubit, Provider \\
+\textbf{Tools:} Git, GitHub, VS Code, Android Studio, LDPlayer \\
+\textbf{Other:} OOP, REST APIs, Hive, Agile Development \\
+\textbf{Operating Systems:} Windows, Linux
+}
+\end{document}

@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:animated_theme_switcher/animated_theme_switcher.dart';
 import 'firebase_options.dart';
+import 'core/theme/theme_cubit.dart';
 import 'core/utils/app_theme.dart';
 import 'features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'features/home/presentation/manager/cubit/posts_cubit.dart';
@@ -20,47 +23,78 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString('app_theme_mode') ?? 'light';
+  final isDark = savedTheme == 'dark';
+  AppColors.isDark = isDark;
+
   if (!kIsWeb) {
     SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
+      SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       ),
     );
   }
 
-  runApp(const ConnectHubApp());
+  runApp(ConnectHubApp(prefs: prefs));
 }
 
 class ConnectHubApp extends StatelessWidget {
-  const ConnectHubApp({super.key});
+  final SharedPreferences prefs;
+  const ConnectHubApp({super.key, required this.prefs});
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return MaterialApp(
-        title: 'ConnectHub | Portfolio',
-        debugShowCheckedModeBanner: false,
-        onGenerateRoute: PortfolioRouter.onGenerateRoute,
-        initialRoute: PortfolioRouter.rootRoute,
-      );
-    }
+    return BlocProvider(
+      create: (_) => ThemeCubit(prefs),
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          final isDark = themeMode == ThemeMode.dark;
+          AppColors.isDark = isDark;
+          final currentTheme =
+              isDark ? AppTheme.darkTheme : AppTheme.lightTheme;
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => AuthCubit()),
-        BlocProvider(create: (_) => PostsCubit()),
-        BlocProvider(create: (_) => ChatbotCubit()),
-        BlocProvider(create: (_) => NotificationCubit()),
-        BlocProvider(create: (_) => ConversationsCubit()),
-      ],
-      child: MaterialApp(
-        title: 'ConnectHub',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.theme,
-        home: const SplashView(),
+          return ThemeProvider(
+            initTheme: currentTheme,
+            duration: const Duration(milliseconds: 600),
+            builder: (context, theme) {
+              if (kIsWeb) {
+                return MaterialApp(
+                  title: 'ConnectHub | Portfolio',
+                  debugShowCheckedModeBanner: false,
+                  theme: theme,
+                  onGenerateRoute: PortfolioRouter.onGenerateRoute,
+                  initialRoute: PortfolioRouter.rootRoute,
+                  builder: (context, child) => ThemeSwitchingArea(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                );
+              }
+
+              return MultiBlocProvider(
+                providers: [
+                  BlocProvider(create: (_) => AuthCubit()),
+                  BlocProvider(create: (_) => PostsCubit()),
+                  BlocProvider(create: (_) => ChatbotCubit()),
+                  BlocProvider(create: (_) => NotificationCubit()),
+                  BlocProvider(create: (_) => ConversationsCubit()),
+                ],
+                child: MaterialApp(
+                  title: 'ConnectHub',
+                  debugShowCheckedModeBanner: false,
+                  theme: theme,
+                  home: const SplashView(),
+                  builder: (context, child) => ThemeSwitchingArea(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 }
-

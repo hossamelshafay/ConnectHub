@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
 import 'package:connecthub/features/profile/data/repos/profile_repo.dart';
 import 'package:connecthub/features/profile/data/repos/profile_repo_imp.dart';
+import 'package:connecthub/features/profile/data/models/user_model.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_state.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
@@ -93,21 +96,37 @@ class ProfileCubit extends Cubit<ProfileState> {
     );
   }
 
-  /// Updates profile image, display name, username, and bio.
+  /// Updates profile image, display name, username, bio, headline, location, and social links.
   Future<bool> updateProfile({
     required String name,
     required String username,
     required String bio,
+    String? headline,
+    String? location,
+    String? cvLink,
+    SocialLinksModel? socialLinks,
     Uint8List? imageBytes,
     File? imageFile,
+    bool removePhoto = false,
   }) async {
     final user = _user ?? _profileRepo.currentUser;
     if (user == null) return false;
 
     emit(ProfileUpdating());
     try {
-      String? imageUrl = _userData?['profileImage'] as String? ?? user.photoURL;
-      if (imageBytes != null) {
+      String? imageUrl;
+      final oldPhoto = _userData?['profileImage'] as String? ?? user.photoURL;
+
+      if (removePhoto) {
+        imageUrl = '';
+        if (oldPhoto != null && oldPhoto.trim().isNotEmpty) {
+          try {
+            await CachedNetworkImage.evictFromCache(oldPhoto.trim());
+          } catch (_) {}
+        }
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } else if (imageBytes != null) {
         final uploaded = await _profileRepo.uploadProfileBytes(imageBytes);
         if (uploaded != null) {
           imageUrl = uploaded;
@@ -117,12 +136,21 @@ class ProfileCubit extends Cubit<ProfileState> {
         if (uploaded != null) {
           imageUrl = uploaded;
         }
+      } else {
+        final existing = _userData?['profileImage'] as String?;
+        imageUrl = (existing != null && existing.trim().isNotEmpty)
+            ? existing.trim()
+            : null;
       }
 
       await _profileRepo.updateProfile(
         name: name,
         username: username,
         bio: bio,
+        headline: headline,
+        location: location,
+        cvLink: cvLink,
+        socialLinks: socialLinks,
         profileImageUrl: imageUrl,
       );
 
@@ -132,7 +160,57 @@ class ProfileCubit extends Cubit<ProfileState> {
         'name': name.trim(),
         'username': username.trim().replaceAll('@', ''),
         'bio': bio.trim(),
-        'profileImage': ?imageUrl,
+        if (headline != null) 'headline': headline.trim(),
+        if (location != null) 'location': location.trim(),
+        if (cvLink != null) 'cvLink': cvLink.trim(),
+        if (cvLink != null) 'resumeUrl': cvLink.trim(),
+        if (socialLinks != null) 'socialLinks': socialLinks.toMap(),
+        'profileImage': removePhoto
+            ? ''
+            : (imageUrl ?? (_userData?['profileImage'] ?? '')),
+      };
+
+      emit(ProfileUpdateSuccess());
+      _emitLoaded();
+      return true;
+    } catch (e) {
+      emit(ProfileUpdateError(e.toString().replaceAll('Exception: ', '')));
+      _emitLoaded();
+      return false;
+    }
+  }
+
+  /// Removes custom profile photo, restoring the universal default avatar.
+  Future<bool> removeProfilePhoto() async {
+    final user = _user ?? _profileRepo.currentUser;
+    if (user == null) return false;
+
+    emit(ProfileUpdating());
+    try {
+      final name = _userData?['name'] as String? ?? user.displayName ?? '';
+      final username = _userData?['username'] as String? ?? '';
+      final bio = _userData?['bio'] as String? ?? '';
+      final oldPhoto = _userData?['profileImage'] as String? ?? user.photoURL;
+
+      await _profileRepo.updateProfile(
+        name: name,
+        username: username,
+        bio: bio,
+        profileImageUrl: '',
+      );
+
+      if (oldPhoto != null && oldPhoto.trim().isNotEmpty) {
+        try {
+          await CachedNetworkImage.evictFromCache(oldPhoto.trim());
+        } catch (_) {}
+      }
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+
+      _user = _profileRepo.currentUser;
+      _userData = {
+        ...?_userData,
+        'profileImage': '',
       };
 
       emit(ProfileUpdateSuccess());

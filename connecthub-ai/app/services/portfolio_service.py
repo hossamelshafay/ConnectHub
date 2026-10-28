@@ -189,27 +189,20 @@ class PortfolioService:
         max_mb = self._settings.max_upload_size_mb
 
         if hasattr(file, "read"):
-            chunks: List[bytes] = []
-            total_bytes = 0
-            while True:
-                read_res = file.read(CHUNK_SIZE)
-                chunk = await read_res if inspect.isawaitable(read_res) else read_res
-                if not chunk:
-                    break
-                total_bytes += len(chunk)
-                if total_bytes > max_bytes:
-                    logger.warning(
-                        "portfolio.file_oversized",
-                        filename=file_name,
-                        total_bytes=total_bytes,
-                        limit_bytes=max_bytes,
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                        detail=f"File size exceeds maximum allowed limit of {max_mb} MB.",
-                    )
-                chunks.append(chunk)
-            file_bytes = b"".join(chunks)
+            read_fn = getattr(file, "read")
+            read_res = read_fn()
+            file_bytes = await read_res if inspect.isawaitable(read_res) else read_res
+            if len(file_bytes) > max_bytes:
+                logger.warning(
+                    "portfolio.file_oversized",
+                    filename=file_name,
+                    total_bytes=len(file_bytes),
+                    limit_bytes=max_bytes,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    detail=f"File size exceeds maximum allowed limit of {max_mb} MB.",
+                )
         elif isinstance(file, (bytes, bytearray)):
             file_bytes = bytes(file)
             if len(file_bytes) > max_bytes:
@@ -231,10 +224,9 @@ class PortfolioService:
                 detail=str(exc),
             ) from exc
 
-        # ── 4. Validate PDF Magic Bytes & Structure Integrity ────────────────
+        # ── 4. Validate PDF Magic Bytes (Header Check) ────────────────────────
         try:
             self._validator.validate_pdf_magic_bytes(file_bytes[:1024])
-            self._validator.validate_pdf_integrity(file_bytes)
         except ValidationServiceError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

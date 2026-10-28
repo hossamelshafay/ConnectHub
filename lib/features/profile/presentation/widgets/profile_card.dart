@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/core/widgets/user_avatar.dart';
 import 'package:connecthub/features/portfolio/presentation/widgets/portfolio_switch_button.dart';
+import 'package:connecthub/features/profile/data/models/user_model.dart';
+import 'package:connecthub/features/profile/presentation/widgets/profile_social_links_bar.dart';
+import 'package:connecthub/features/profile/presentation/widgets/profile_stat_bar.dart';
+import 'package:connecthub/features/profile/presentation/widgets/profile_tab_bar.dart';
 
+/// Redesigned Profile Header Card matching the visual reference mockup:
+/// - Horizontal top row with Avatar (with camera badge), Name + Verified Badge,
+///   Headline, and Location.
+/// - Sleek "Edit Profile" pill button on the top right.
+/// - Bio paragraph with refined typography.
+/// - Horizontal social links row with website pill and brand icon buttons.
+/// - Segmented statistics bar (Posts · Followers · Following).
+/// - Pill segmented tab switcher ("Posts" / "Liked").
 class ProfileCard extends StatelessWidget {
   final User user;
   final int postCount;
@@ -14,7 +24,10 @@ class ProfileCard extends StatelessWidget {
   final int followingCount;
   final String? displayName;
   final String? username;
+  final String? headline;
+  final String? location;
   final String? bio;
+  final SocialLinksModel? socialLinks;
   final String? profileImage;
   final DateTime? joinedDate;
   final bool isCurrentUser;
@@ -25,6 +38,8 @@ class ProfileCard extends StatelessWidget {
   final VoidCallback? onFollowersTap;
   final VoidCallback? onFollowingTap;
   final VoidCallback? onSwitchToPortfolio;
+  final int selectedTabIndex;
+  final ValueChanged<int>? onTabChanged;
 
   const ProfileCard({
     super.key,
@@ -35,7 +50,10 @@ class ProfileCard extends StatelessWidget {
     this.followingCount = 0,
     this.displayName,
     this.username,
+    this.headline,
+    this.location,
     this.bio,
+    this.socialLinks,
     this.profileImage,
     this.joinedDate,
     this.isCurrentUser = true,
@@ -46,374 +64,273 @@ class ProfileCard extends StatelessWidget {
     this.onFollowersTap,
     this.onFollowingTap,
     this.onSwitchToPortfolio,
+    this.selectedTabIndex = 0,
+    this.onTabChanged,
   });
-
-  Widget get _verticalDivider => Container(
-        width: 1,
-        height: 32,
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        color: Colors.white.withValues(alpha: 0.25),
-      );
 
   @override
   Widget build(BuildContext context) {
     final effectiveName = displayName?.trim().isNotEmpty == true
-        ? displayName!
+        ? displayName!.trim()
         : (user.displayName?.trim().isNotEmpty == true
-            ? user.displayName!
+            ? user.displayName!.trim()
             : 'User');
 
-    final effectiveUsername = username?.trim().isNotEmpty == true
-        ? (username!.startsWith('@') ? username! : '@$username')
-        : '@${user.email?.split('@').first ?? 'user'}';
+    final effectiveHeadline = headline?.trim().isNotEmpty == true
+        ? headline!.trim()
+        : '';
 
-    final effectiveJoinedDate = joinedDate ??
-        user.metadata.creationTime ??
-        DateTime.now();
-    final joinedString = DateFormat('MMMM yyyy').format(effectiveJoinedDate);
+    final effectiveLocation = location?.trim().isNotEmpty == true
+        ? location!.trim()
+        : '';
 
+    final effectiveBio = bio?.trim().isNotEmpty == true
+        ? bio!.trim()
+        : '';
+
+    final effectiveSocialLinks = socialLinks ?? const SocialLinksModel();
     final imageUrl = profileImage ?? user.photoURL;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.accent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+    final editBtnBg = AppColors.isDark
+        ? const Color(0x352E2B27)
+        : const Color(0xFFEFE8DE);
+    final editBtnBorder = AppColors.isDark
+        ? const Color(0x28FFFFFF)
+        : const Color(0xFFDFD6C8);
+    final editBtnText = AppColors.isDark
+        ? AppColors.primary
+        : const Color(0xFF5A4D3F);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Circular Profile Image
-          Container(
-            width: 86,
-            height: 86,
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.3),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
-                width: 2.5,
-              ),
-            ),
-            child: ClipOval(
-              child: (imageUrl != null && imageUrl.isNotEmpty)
-                  ? CachedNetworkImage(
+          // ── Header Row: Avatar + Info + Edit Profile Button ─────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Avatar with camera/action badge
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 76,
+                    height: 76,
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.isDark
+                            ? const Color(0x35FFFFFF)
+                            : const Color(0xFFE2D9CC),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: UserAvatar(
+                      name: effectiveName,
                       imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      width: 80,
-                      height: 80,
-                      placeholder: (_, _) => Container(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                      size: 71,
+                    ),
+                  ),
+                  if (isCurrentUser)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: GestureDetector(
+                        onTap: onEditProfile,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.isDark
+                                ? const Color(0xFF2E2B27)
+                                : const Color(0xFFEFE8DE),
+                            border: Border.all(
+                              color: AppColors.isDark
+                                  ? const Color(0x50FFFFFF)
+                                  : const Color(0xFFDFD6C8),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.camera_alt_rounded,
+                            size: 13,
+                            color: editBtnText,
                           ),
                         ),
                       ),
-                      errorWidget: (_, _, _) => _buildAvatarFallback(effectiveName),
-                    )
-                  : _buildAvatarFallback(effectiveName),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Display Name
-          Text(
-            effectiveName,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              letterSpacing: -0.3,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 3),
-
-          // Username (@username)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              effectiveUsername,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.95),
+                    ),
+                ],
               ),
-            ),
-          ),
 
-          // Bio
-          if (bio != null && bio!.trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                bio!.trim(),
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.35,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+              const SizedBox(width: 14),
 
-          const SizedBox(height: 10),
-
-          // Joined Date & Optional Website Icon
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.calendar_today_rounded,
-                size: 13,
-                color: Colors.white.withValues(alpha: 0.75),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Joined $joinedString',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              if (websiteGenerated) ...[
-                const SizedBox(width: 10),
-                Tooltip(
-                  message: 'Visit Website',
-                  child: InkWell(
-                    onTap: () async {
-                      if (websiteUrl != null && websiteUrl!.trim().isNotEmpty) {
-                        final uri = Uri.tryParse(websiteUrl!.trim());
-                        if (uri == null || !uri.hasScheme) return;
-                        debugPrint('[ProfileCard] Opening website: $uri');
-                        try {
-                          final launched = await launchUrl(
-                            uri,
-                            mode: LaunchMode.externalApplication,
-                          );
-                          if (!launched) {
-                            await launchUrl(uri, mode: LaunchMode.platformDefault);
-                          }
-                        } catch (e) {
-                          debugPrint('[ProfileCard] launchUrl error: $e');
-                        }
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          width: 1,
+              // Name, Headline, Location
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            effectiveName,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      child: const Icon(
-                        Icons.language_rounded,
-                        size: 14,
-                        color: Colors.white,
-                      ),
+                        const SizedBox(width: 5),
+                        Icon(
+                          Icons.verified,
+                          size: 17,
+                          color: AppColors.isDark
+                              ? AppColors.primary
+                              : const Color(0xFFA67C52),
+                        ),
+                      ],
                     ),
-                  ),
+                    if (effectiveHeadline.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        effectiveHeadline,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                          letterSpacing: -0.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (effectiveLocation.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 13.5,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              effectiveLocation,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ],
-          ),
-
-          const SizedBox(height: 18),
-          Container(
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.2),
-          ),
-          const SizedBox(height: 14),
-
-          // Stat Row: Posts · Followers · Following
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              StatItem(
-                count: postCount.toString(),
-                label: 'Posts',
               ),
-              _verticalDivider,
-              GestureDetector(
-                onTap: onFollowersTap,
-                behavior: HitTestBehavior.opaque,
-                child: StatItem(
-                  count: followersCount.toString(),
-                  label: 'Followers',
-                  isClickable: onFollowersTap != null,
-                ),
-              ),
-              _verticalDivider,
-              GestureDetector(
-                onTap: onFollowingTap,
-                behavior: HitTestBehavior.opaque,
-                child: StatItem(
-                  count: followingCount.toString(),
-                  label: 'Following',
-                  isClickable: onFollowingTap != null,
-                ),
-              ),
-            ],
-          ),
 
-          // Action Buttons: Edit Profile & Liked Posts
-          if (isCurrentUser) ...[
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onEditProfile,
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text(
+              // Edit Profile Pill Button
+              if (isCurrentUser && onEditProfile != null) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onEditProfile,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: editBtnBg,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: editBtnBorder),
+                    ),
+                    child: Text(
                       'Edit Profile',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        width: 1.5,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: onLikedPosts,
-                    icon: const Icon(Icons.favorite_rounded, size: 16),
-                    label: const Text(
-                      'Liked Posts',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: editBtnText,
                       ),
                     ),
                   ),
                 ),
               ],
-            ),
-            if (onSwitchToPortfolio != null) ...[
-              const SizedBox(height: 12),
-              PortfolioSwitchButton(
-                target: ProfileSwitchTarget.portfolio,
-                onPressed: onSwitchToPortfolio!,
-                isDarkTheme: false,
-              ),
             ],
+          ),
+
+          // ── Bio ─────────────────────────────────────────────────────
+          if (effectiveBio.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              effectiveBio,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13.5,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
+
+          // ── Social Links Row ────────────────────────────────────────
+          if (effectiveSocialLinks.isNotEmpty ||
+              (websiteUrl != null && websiteUrl!.isNotEmpty)) ...[
+            const SizedBox(height: 14),
+            ProfileSocialLinksBar(
+              socialLinks: effectiveSocialLinks,
+              websiteUrl: websiteUrl,
+            ),
+          ],
+
+          // ── Portfolio Switch Button (if enabled) ─────────────────────
+          if (isCurrentUser && onSwitchToPortfolio != null) ...[
+            const SizedBox(height: 12),
+            PortfolioSwitchButton(
+              target: ProfileSwitchTarget.portfolio,
+              onPressed: onSwitchToPortfolio!,
+              isDarkTheme: AppColors.isDark,
+            ),
+          ],
+
+          const SizedBox(height: 16),
+
+          // ── Statistics Bar (Posts · Followers · Following) ──────────
+          ProfileStatBar(
+            postCount: postCount,
+            followersCount: followersCount,
+            followingCount: followingCount,
+            onFollowersTap: onFollowersTap,
+            onFollowingTap: onFollowingTap,
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Pill Tab Switcher ("Posts" / "Liked") ────────────────────
+          if (onTabChanged != null)
+            ProfileTabBar(
+              selectedIndex: selectedTabIndex,
+              onTabSelected: onTabChanged!,
+              firstTabLabel: 'Posts',
+              secondTabLabel: 'Liked',
+            ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAvatarFallback(String name) {
-    return Container(
-      color: Colors.white.withValues(alpha: 0.2),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : 'U',
-          style: const TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class StatItem extends StatelessWidget {
-  final String count;
-  final String label;
-  final bool isClickable;
-
-  const StatItem({
-    super.key,
-    required this.count,
-    required this.label,
-    this.isClickable = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              count,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            if (isClickable) ...[
-              const SizedBox(width: 3),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 10,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isClickable ? FontWeight.w600 : FontWeight.w400,
-            color: Colors.white.withValues(alpha: isClickable ? 0.95 : 0.8),
-            decoration:
-                isClickable ? TextDecoration.underline : TextDecoration.none,
-            decorationColor: Colors.white.withValues(alpha: 0.6),
-          ),
-        ),
-      ],
     );
   }
 }

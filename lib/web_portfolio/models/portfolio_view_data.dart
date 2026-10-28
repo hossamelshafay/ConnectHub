@@ -40,7 +40,14 @@ class PortfolioViewData {
   final List<SkillItem> skills;
   final List<StatItem> stats;
   final List<String> roleTitles;
+  final String? cvLink;
   final String? resumeUrl;
+
+  String? get effectiveCvLink => (cvLink != null && cvLink!.trim().isNotEmpty)
+      ? cvLink!.trim()
+      : ((resumeUrl != null && resumeUrl!.trim().isNotEmpty)
+          ? resumeUrl!.trim()
+          : (user.cvLink ?? user.resumeUrl));
 
   const PortfolioViewData({
     required this.user,
@@ -51,6 +58,7 @@ class PortfolioViewData {
     required this.skills,
     required this.stats,
     required this.roleTitles,
+    this.cvLink,
     this.resumeUrl,
   });
 }

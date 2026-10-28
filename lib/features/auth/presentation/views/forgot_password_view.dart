@@ -29,11 +29,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         if (state is AuthPasswordResetSent) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Password reset email sent! Check your inbox.'),
-              backgroundColor: AppColors.success,
+              content: const Text('Password reset email sent. Check your inbox.'),
+              backgroundColor: AppColors.surfaceVariant,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: AppColors.success, width: 1),
+              ),
             ),
           );
           Navigator.pop(context);
@@ -41,15 +43,27 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.surfaceVariant,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: AppColors.error, width: 1),
+              ),
             ),
           );
         }
       },
       child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: AppIconButton(
+            icon: Icons.arrow_back_ios_new,
+            size: 18,
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -58,28 +72,14 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 40),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new,
-                          size: 18, color: AppColors.textPrimary),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Text('Forgot Password', style: AppTextStyles.headline1),
+                  const SizedBox(height: 16),
+                  Text('Reset Password', style: AppTextStyles.headline1),
                   const SizedBox(height: 8),
                   Text(
-                    'Enter your email and we\'ll send you a link to reset your password.',
+                    'Enter your registered email address and we will send you a password reset link.',
                     style: AppTextStyles.body2,
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 36),
                   CustomTextField(
                     controller: _emailController,
                     hintText: 'Email address',
@@ -95,7 +95,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
                   BlocBuilder<AuthCubit, AuthState>(
                     builder: (context, state) {
                       return PrimaryButton(
@@ -104,7 +104,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             context.read<AuthCubit>().forgotPassword(
-                                  _emailController.text,
+                                  _emailController.text.trim(),
                                 );
                           }
                         },

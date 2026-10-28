@@ -3,33 +3,62 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/portfolio/data/models/certificate_model.dart';
 import 'package:connecthub/features/portfolio_import/presentation/cubit/portfolio_editor_cubit.dart';
 
+import 'package:connecthub/features/portfolio/presentation/cubit/portfolio_cubit.dart';
+import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/features/portfolio_import/presentation/widgets/portfolio_form_field.dart';
+
 class CertificateFormSheet extends StatefulWidget {
   final String uid;
   final CertificateModel? certificate;
+  final PortfolioCubit? portfolioCubit;
 
   const CertificateFormSheet({
     super.key,
     required this.uid,
     this.certificate,
+    this.portfolioCubit,
   });
 
   static Future<void> show(
     BuildContext context, {
     required String uid,
     CertificateModel? certificate,
+    PortfolioCubit? portfolioCubit,
   }) {
     final cubit = context.read<PortfolioEditorCubit>();
+    PortfolioCubit? effectivePortfolioCubit = portfolioCubit;
+    if (effectivePortfolioCubit == null) {
+      try {
+        effectivePortfolioCubit = context.read<PortfolioCubit>();
+      } catch (_) {}
+    }
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: isDark ? const Color(0xFF1C1A18) : const Color(0xFFFAF8F5),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => BlocProvider.value(
-        value: cubit,
-        child: CertificateFormSheet(uid: uid, certificate: certificate),
-      ),
+      builder: (_) {
+        Widget content = CertificateFormSheet(
+          uid: uid,
+          certificate: certificate,
+          portfolioCubit: effectivePortfolioCubit,
+        );
+        if (effectivePortfolioCubit != null) {
+          content = BlocProvider.value(
+            value: effectivePortfolioCubit,
+            child: content,
+          );
+        }
+        return BlocProvider.value(
+          value: cubit,
+          child: content,
+        );
+      },
     );
   }
 
@@ -78,17 +107,28 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
     );
 
     final cubit = context.read<PortfolioEditorCubit>();
+    PortfolioCubit? portCubit = widget.portfolioCubit;
+    if (portCubit == null) {
+      try {
+        portCubit = context.read<PortfolioCubit>();
+      } catch (_) {}
+    }
+
     if (widget.certificate != null) {
       await cubit.updateCertificate(uid: widget.uid, certificate: model);
     } else {
       await cubit.addCertificate(uid: widget.uid, certificate: model);
     }
 
+    portCubit?.loadPortfolio(widget.uid);
+
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isEditing = widget.certificate != null;
     return DraggableScrollableSheet(
       expand: false,
@@ -111,7 +151,7 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF475569),
+                    color: isDark ? const Color(0xFF55504A) : const Color(0xFFD4CDC5),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -119,14 +159,14 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
               const SizedBox(height: 16),
               Text(
                 isEditing ? 'Edit Certificate' : 'Add Certificate',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 20),
-              _buildField(
+              PortfolioFormField(
                 label: 'CERTIFICATE TITLE *',
                 controller: _titleCtrl,
                 validator: (val) => (val == null || val.trim().isEmpty)
@@ -134,7 +174,7 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
                     : null,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'ISSUING ORGANIZATION *',
                 controller: _orgCtrl,
                 validator: (val) => (val == null || val.trim().isEmpty)
@@ -142,12 +182,12 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
                     : null,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'CREDENTIAL ID',
                 controller: _credIdCtrl,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'CREDENTIAL URL',
                 controller: _credUrlCtrl,
               ),
@@ -157,8 +197,8 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF94A3B8),
-                        side: const BorderSide(color: Color(0xFF334155)),
+                        foregroundColor: AppColors.textMuted,
+                        side: BorderSide(color: AppColors.glassBorder),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -172,8 +212,8 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF38BDF8),
-                        foregroundColor: const Color(0xFF0F172A),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.isDark ? const Color(0xFF141210) : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -192,61 +232,6 @@ class _CertificateFormSheetState extends State<CertificateFormSheet> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildField({
-    required String label,
-    required TextEditingController controller,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          validator: validator,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF0F172A),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF334155)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF334155)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF38BDF8)),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

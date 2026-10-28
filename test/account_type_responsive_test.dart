@@ -41,7 +41,7 @@ void main() {
         await tester.pump();
 
         expect(tester.takeException(), isNull);
-        expect(find.text('What best describes your account?'), findsOneWidget);
+        expect(find.text('Choose your account type'), findsOneWidget);
         expect(find.text('Personal Account'), findsOneWidget);
         expect(find.text('Professional Account'), findsOneWidget);
         expect(find.text('Create Account'), findsOneWidget);

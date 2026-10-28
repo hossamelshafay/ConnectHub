@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
 import 'package:connecthub/features/home/presentation/manager/cubit/posts_cubit.dart';
 import 'package:connecthub/features/home/presentation/widgets/post_card.dart';
@@ -20,19 +21,31 @@ class LikedPostsView extends StatelessWidget {
     final targetUserId = userId ?? currentUserId;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Liked Posts'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => Navigator.pop(context),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        title: Text('Liked Posts', style: AppTextStyles.headline3),
+        centerTitle: true,
+        leading: Center(
+          child: AppIconButton(
+            icon: Icons.arrow_back_ios_new,
+            size: 18,
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
       ),
       body: StreamBuilder<List<PostModel>>(
         stream: cubit.getLikedPostsStream(targetUserId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: 3,
+              itemBuilder: (context, index) => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: PostShimmerCard(),
+              ),
             );
           }
 
@@ -48,31 +61,10 @@ class LikedPostsView extends StatelessWidget {
           final posts = snapshot.data ?? [];
           if (posts.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: const BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.favorite_border_rounded,
-                      size: 40,
-                      color: AppColors.textHint,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('No liked posts yet', style: AppTextStyles.headline3),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Posts you like will be saved here.',
-                    style:
-                        AppTextStyles.body2.copyWith(color: AppColors.textHint),
-                  ),
-                ],
+              child: EmptyStateWidget(
+                icon: Icons.favorite_border_rounded,
+                title: 'No liked posts yet',
+                subtitle: 'Posts you like across the platform will appear here.',
               ),
             );
           }

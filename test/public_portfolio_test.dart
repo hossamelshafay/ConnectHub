@@ -14,7 +14,10 @@ class _FakeWebPortfolioRemoteDataSource implements WebPortfolioRemoteDataSource 
   _FakeWebPortfolioRemoteDataSource(this.snapshotToReturn);
 
   @override
-  Future<PublicPortfolioSnapshot?> getPublicPortfolioSnapshot(String? identifier) async {
+  Future<PublicPortfolioSnapshot?> getPublicPortfolioSnapshot(
+    String? identifier, {
+    bool forceServer = false,
+  }) async {
     return snapshotToReturn;
   }
 

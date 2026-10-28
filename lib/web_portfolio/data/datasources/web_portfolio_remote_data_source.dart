@@ -13,7 +13,10 @@ import '../../../features/generate_website/data/models/public_portfolio_snapshot
 /// Contract for fetching raw portfolio data directly from Cloud Firestore.
 abstract class WebPortfolioRemoteDataSource {
   /// Fetches a denormalized snapshot from `public_portfolios` by username or UID.
-  Future<PublicPortfolioSnapshot?> getPublicPortfolioSnapshot(String? identifier);
+  Future<PublicPortfolioSnapshot?> getPublicPortfolioSnapshot(
+    String? identifier, {
+    bool forceServer = false,
+  });
 
   /// Resolves the user document by either direct UID, username, or profileSlug.
   Future<UserModel?> getUserByIdOrUsername(String? identifier);
@@ -43,19 +46,33 @@ class WebPortfolioRemoteDataSourceImpl implements WebPortfolioRemoteDataSource {
         _auth = auth ?? FirebaseAuth.instance;
 
   @override
-  Future<PublicPortfolioSnapshot?> getPublicPortfolioSnapshot(String? identifier) async {
+  Future<PublicPortfolioSnapshot?> getPublicPortfolioSnapshot(
+    String? identifier, {
+    bool forceServer = false,
+  }) async {
     try {
       final cleanId = identifier?.trim();
+      final options = forceServer
+          ? const GetOptions(source: Source.server)
+          : const GetOptions(source: Source.serverAndCache);
+
       if (cleanId == null || cleanId.isEmpty) {
         final currentUid = _auth.currentUser?.uid;
         if (currentUid != null) {
-          final doc = await _firestore.collection('public_portfolios').doc(currentUid).get();
-          if (doc.exists) return PublicPortfolioSnapshot.fromDoc(doc);
+          try {
+            final doc = await _firestore.collection('public_portfolios').doc(currentUid).get(options);
+            if (doc.exists) return PublicPortfolioSnapshot.fromDoc(doc);
+          } catch (_) {
+            if (forceServer) {
+              final doc = await _firestore.collection('public_portfolios').doc(currentUid).get();
+              if (doc.exists) return PublicPortfolioSnapshot.fromDoc(doc);
+            }
+          }
           final uidQuery = await _firestore
               .collection('public_portfolios')
               .where('uid', isEqualTo: currentUid)
               .limit(1)
-              .get();
+              .get(options);
           if (uidQuery.docs.isNotEmpty) {
             return PublicPortfolioSnapshot.fromDoc(uidQuery.docs.first);
           }
@@ -64,12 +81,24 @@ class WebPortfolioRemoteDataSourceImpl implements WebPortfolioRemoteDataSource {
       }
 
       // 1. Direct doc lookup by lowercased username / identifier
-      final docByLower = await _firestore
-          .collection('public_portfolios')
-          .doc(cleanId.toLowerCase())
-          .get();
-      if (docByLower.exists) {
-        return PublicPortfolioSnapshot.fromDoc(docByLower);
+      try {
+        final docByLower = await _firestore
+            .collection('public_portfolios')
+            .doc(cleanId.toLowerCase())
+            .get(options);
+        if (docByLower.exists) {
+          return PublicPortfolioSnapshot.fromDoc(docByLower);
+        }
+      } catch (_) {
+        if (forceServer) {
+          final docByLower = await _firestore
+              .collection('public_portfolios')
+              .doc(cleanId.toLowerCase())
+              .get();
+          if (docByLower.exists) {
+            return PublicPortfolioSnapshot.fromDoc(docByLower);
+          }
+        }
       }
 
       // 2. Direct doc lookup by exact identifier (UID or exact case)

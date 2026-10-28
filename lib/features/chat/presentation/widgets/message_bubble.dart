@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
-import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/chat/data/models/message_model.dart';
-import 'package:connecthub/features/post/presentation/views/post_details_view.dart';
+import 'package:connecthub/features/chat/presentation/widgets/chat_message_options_sheet.dart';
+import 'package:connecthub/features/chat/presentation/widgets/chat_reply_quote.dart';
+import 'package:connecthub/features/chat/presentation/widgets/chat_shared_post_card.dart';
 
 /// A single chat message bubble.
 ///
@@ -84,34 +84,37 @@ class MessageBubble extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 gradient: (isMe && !message.isDeleted)
-                    ? const LinearGradient(
+                    ? LinearGradient(
                         colors: [AppColors.primary, AppColors.primaryDark],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
                     : null,
                 color: message.isDeleted
-                    ? AppColors.surfaceVariant.withValues(alpha: 0.6)
-                    : (isMe ? null : AppColors.surfaceVariant),
-                border: message.isDeleted
-                    ? Border.all(
-                        color: AppColors.divider.withValues(alpha: 0.8),
-                        width: 1,
-                      )
-                    : null,
+                    ? AppColors.surfaceVariant.withValues(alpha: 0.4)
+                    : (isMe ? null : AppColors.surfaceVariant.withValues(alpha: 0.75)),
+                border: Border.all(
+                  color: isMe
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : (message.isDeleted
+                          ? AppColors.divider.withValues(alpha: 0.5)
+                          : AppColors.glassBorder),
+                  width: 0.8,
+                ),
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
                   bottomLeft:
-                      isMe ? const Radius.circular(20) : const Radius.circular(4),
+                      isMe ? const Radius.circular(18) : const Radius.circular(4),
                   bottomRight:
-                      isMe ? const Radius.circular(4) : const Radius.circular(20),
+                      isMe ? const Radius.circular(4) : const Radius.circular(18),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: (isMe ? AppColors.primaryDark : Colors.black)
+                        .withValues(alpha: isMe ? 0.08 : 0.05),
                     blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    offset: const Offset(0, 1.5),
                   ),
                 ],
               ),
@@ -123,7 +126,7 @@ class MessageBubble extends StatelessWidget {
                   if (!message.isDeleted &&
                       message.replyToId != null &&
                       message.replyToText != null)
-                    _ReplyQuote(
+                    ChatReplyQuote(
                       senderName: message.replyToSenderName ?? '',
                       text: message.replyToText!,
                       isMe: isMe,
@@ -143,7 +146,7 @@ class MessageBubble extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.block_rounded,
                                   size: 14,
                                   color: AppColors.textHint,
@@ -160,7 +163,7 @@ class MessageBubble extends StatelessWidget {
                             ),
                           )
                         else if (message.type == MessageType.postShare)
-                          _SharedPostCard(message: message, isMe: isMe)
+                          ChatSharedPostCard(message: message, isMe: isMe)
                         else
                           Text(
                             message.text,
@@ -226,7 +229,7 @@ class MessageBubble extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MessageOptionsSheet(
+      builder: (_) => ChatMessageOptionsSheet(
         message: message,
         isMe: isMe,
         onEdit: onEdit != null
@@ -272,378 +275,6 @@ class MessageBubble extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reply quote inside a bubble
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ReplyQuote extends StatelessWidget {
-  final String senderName;
-  final String text;
-  final bool isMe;
-  final VoidCallback? onTap;
-
-  const _ReplyQuote({
-    required this.senderName,
-    required this.text,
-    required this.isMe,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final firstLine = text.split('\n').first;
-    final preview =
-        firstLine.length > 60 ? '${firstLine.substring(0, 60)}…' : firstLine;
-    final quoteColor = isMe
-        ? Colors.white.withValues(alpha: 0.15)
-        : AppColors.primary.withValues(alpha: 0.08);
-    final borderColor =
-        isMe ? Colors.white.withValues(alpha: 0.5) : AppColors.primary;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: quoteColor,
-          border: Border(left: BorderSide(color: borderColor, width: 3)),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(4),
-            topRight: Radius.circular(12),
-            bottomRight: Radius.circular(12),
-            bottomLeft: Radius.circular(4),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              senderName,
-              style: AppTextStyles.caption.copyWith(
-                color: isMe ? Colors.white : AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              preview,
-              style: AppTextStyles.caption.copyWith(
-                color: isMe
-                    ? Colors.white.withValues(alpha: 0.8)
-                    : AppColors.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Options bottom sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MessageOptionsSheet extends StatelessWidget {
-  final MessageModel message;
-  final bool isMe;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final VoidCallback onReply;
-  final VoidCallback onForward;
-  final VoidCallback onCopy;
-
-  const _MessageOptionsSheet({
-    required this.message,
-    required this.isMe,
-    this.onEdit,
-    this.onDelete,
-    required this.onReply,
-    required this.onForward,
-    required this.onCopy,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDeleted = message.isDeleted;
-
-    return Container(
-      margin: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (isDeleted) ...[
-              if (onDelete != null)
-                _OptionTile(
-                  icon: Icons.delete_outline_rounded,
-                  label: 'Delete for me',
-                  color: AppColors.error,
-                  onTap: onDelete!,
-                ),
-            ] else ...[
-              if (isMe && onEdit != null && message.type == MessageType.text)
-                _OptionTile(
-                  icon: Icons.edit_rounded,
-                  label: 'Edit',
-                  color: AppColors.accent,
-                  onTap: onEdit!,
-                ),
-              _OptionTile(
-                icon: Icons.reply_rounded,
-                label: 'Reply',
-                onTap: onReply,
-              ),
-              _OptionTile(
-                icon: Icons.copy_rounded,
-                label: 'Copy',
-                onTap: onCopy,
-              ),
-              _OptionTile(
-                icon: Icons.forward_rounded,
-                label: 'Forward',
-                onTap: onForward,
-              ),
-              if (onDelete != null)
-                _OptionTile(
-                  icon: Icons.delete_outline_rounded,
-                  label: isMe ? 'Delete' : 'Delete for me',
-                  color: AppColors.error,
-                  onTap: onDelete!,
-                ),
-            ],
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OptionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? color;
-
-  const _OptionTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tint = color ?? AppColors.primary;
-    return ListTile(
-      leading: Icon(icon, color: tint),
-      title: Text(
-        label,
-        style: AppTextStyles.body1.copyWith(
-          color: color,
-          fontWeight: color != null ? FontWeight.w600 : null,
-        ),
-      ),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared post preview card inside a message bubble
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SharedPostCard extends StatelessWidget {
-  final MessageModel message;
-  final bool isMe;
-
-  const _SharedPostCard({
-    required this.message,
-    required this.isMe,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final preview = message.sharedPostPreview ?? {};
-    final postId = message.sharedPostId ?? (preview['postId'] as String? ?? '');
-    final title = (preview['title'] as String? ?? '').trim();
-    final description = (preview['description'] as String? ?? '').trim();
-    final imageUrl = preview['imageUrl'] as String?;
-    final authorName = (preview['authorName'] as String? ?? 'User').trim();
-    final authorPhoto = preview['authorPhoto'] as String?;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: postId.isNotEmpty
-            ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PostDetailsView(postId: postId),
-                  ),
-                );
-              }
-            : null,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 250,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: isMe
-                ? Colors.white.withValues(alpha: 0.12)
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isMe
-                  ? Colors.white.withValues(alpha: 0.25)
-                  : AppColors.divider,
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Badge + Author Row
-              Row(
-                children: [
-                  UserAvatar(
-                    name: authorName,
-                    size: 26,
-                    imageUrl: authorPhoto,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      authorName,
-                      style: AppTextStyles.body2.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isMe ? Colors.white : AppColors.textPrimary,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isMe
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.article_outlined,
-                          size: 11,
-                          color: isMe ? Colors.white : AppColors.primary,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          'Shared Post',
-                          style: AppTextStyles.caption.copyWith(
-                            color: isMe ? Colors.white : AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (imageUrl != null && imageUrl.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    height: 130,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(
-                      height: 130,
-                      color: AppColors.surfaceVariant,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (_, _, _) => Container(
-                      height: 130,
-                      color: AppColors.surfaceVariant,
-                      child: const Icon(
-                        Icons.broken_image_outlined,
-                        color: AppColors.textHint,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (title.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: AppTextStyles.body1.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: isMe ? Colors.white : AppColors.textPrimary,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              if (description.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: AppTextStyles.body2.copyWith(
-                    color: isMe
-                        ? Colors.white.withValues(alpha: 0.85)
-                        : AppColors.textSecondary,
-                    fontSize: 12,
-                    height: 1.3,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/follow/data/repos/follow_repo.dart';
 import 'package:connecthub/features/follow/data/repos/follow_repo_imp.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_state.dart';
+import 'package:connecthub/features/profile/data/models/user_model.dart';
 
 class FollowCubit extends Cubit<FollowState> {
   final FollowRepo _followRepo;
@@ -22,6 +23,9 @@ class FollowCubit extends Cubit<FollowState> {
   String? _profileImage;
   String? _username;
   String? _bio;
+  String? _headline;
+  String? _location;
+  SocialLinksModel _socialLinks = const SocialLinksModel();
   bool _websiteGenerated = false;
   String? _websiteUrl;
 
@@ -74,6 +78,12 @@ class FollowCubit extends Cubit<FollowState> {
           _profileImage = data['profileImage'] as String?;
           _username = data['username'] as String?;
           _bio = data['bio'] as String?;
+          _headline = data['headline'] as String?;
+          _location = data['location'] as String?;
+          final rawLinks = data['socialLinks'] as Map<String, dynamic>?;
+          _socialLinks = rawLinks != null
+              ? SocialLinksModel.fromMap(rawLinks)
+              : SocialLinksModel.fromMap(data);
           _websiteGenerated = (data['websiteGenerated'] as bool?) ?? false;
           _websiteUrl = data['websiteUrl'] as String? ?? data['publicPortfolioUrl'] as String?;
         }
@@ -152,6 +162,9 @@ class FollowCubit extends Cubit<FollowState> {
         profileImage: _profileImage,
         username: _username,
         bio: _bio,
+        headline: _headline,
+        location: _location,
+        socialLinks: _socialLinks,
         websiteGenerated: _websiteGenerated,
         websiteUrl: _websiteUrl,
       ),

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
-import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/auth/data/models/saved_account_model.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
 import 'package:connecthub/features/auth/presentation/views/login_view.dart';
+import 'package:connecthub/features/auth/presentation/widgets/manage_account_tile.dart';
 
 class ManageAccountsBottomSheet extends StatefulWidget {
   const ManageAccountsBottomSheet({super.key});
@@ -41,9 +41,9 @@ class _ManageAccountsBottomSheetState
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: SafeArea(
@@ -71,7 +71,7 @@ class _ManageAccountsBottomSheetState
                 Text('Accounts', style: AppTextStyles.headline3),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded,
+                  icon: Icon(Icons.close_rounded,
                       color: AppColors.textSecondary),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -134,7 +134,7 @@ class _ManageAccountsBottomSheetState
                     const SizedBox(height: 10),
 
                     if (currentAccount != null)
-                      _buildCurrentAccountCard(context, currentAccount)
+                      CurrentAccountCard(account: currentAccount)
                     else
                       const SizedBox.shrink(),
 
@@ -160,9 +160,8 @@ class _ManageAccountsBottomSheetState
                             const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final acc = recentAccounts[index];
-                          return _buildRecentAccountTile(
-                            context,
-                            acc,
+                          return RecentAccountTile(
+                            account: acc,
                             totalCount: savedAccounts.length,
                           );
                         },
@@ -170,7 +169,7 @@ class _ManageAccountsBottomSheetState
                       const SizedBox(height: 20),
                     ],
 
-                    const Divider(height: 1, color: AppColors.divider),
+                    Divider(height: 1, color: AppColors.divider),
                     const SizedBox(height: 16),
 
                     // Add Account button
@@ -204,7 +203,7 @@ class _ManageAccountsBottomSheetState
                                     .withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.add_rounded,
                                 color: AppColors.primary,
                                 size: 24,
@@ -219,7 +218,7 @@ class _ManageAccountsBottomSheetState
                               ),
                             ),
                             const Spacer(),
-                            const Icon(
+                            Icon(
                               Icons.arrow_forward_ios_rounded,
                               color: AppColors.primary,
                               size: 16,
@@ -237,225 +236,5 @@ class _ManageAccountsBottomSheetState
       ),
     ),
   );
-  }
-
-  Widget _buildCurrentAccountCard(
-      BuildContext context, SavedAccountModel account) {
-    final usernameText = account.username.isNotEmpty
-        ? '@${account.username}'
-        : (account.email.isNotEmpty ? account.email : '');
-
-    return InkWell(
-      onTap: () {
-        // Tapping current account simply closes bottom sheet
-        Navigator.pop(context);
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            UserAvatarById(
-              userId: account.uid,
-              fallbackName: account.displayName,
-              fallbackImageUrl: account.profileImage,
-              size: 46,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    account.displayName,
-                    style: AppTextStyles.body1.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (usernameText.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      usernameText,
-                      style: AppTextStyles.body2.copyWith(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Active',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentAccountTile(
-    BuildContext context,
-    SavedAccountModel account, {
-    required int totalCount,
-  }) {
-    final usernameText = account.username.isNotEmpty
-        ? '@${account.username}'
-        : (account.email.isNotEmpty ? account.email : '');
-
-    return InkWell(
-      onTap: () {
-        // Tapping recent account opens LoginView with prefilled email
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => LoginView(
-              isAddingAccount: true,
-              initialEmail: account.email,
-            ),
-          ),
-        );
-      },
-      onLongPress: () {
-        _showRemoveAccountDialog(context, account, totalCount);
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            UserAvatarById(
-              userId: account.uid,
-              fallbackName: account.displayName,
-              fallbackImageUrl: account.profileImage,
-              size: 44,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    account.displayName,
-                    style: AppTextStyles.body1.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (usernameText.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      usernameText,
-                      style: AppTextStyles.body2.copyWith(
-                        fontSize: 13,
-                        color: AppColors.textHint,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.login_rounded,
-              color: AppColors.primary,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showRemoveAccountDialog(
-    BuildContext context,
-    SavedAccountModel account,
-    int totalCount,
-  ) {
-    if (totalCount <= 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('At least one account must remain on this device.'),
-          backgroundColor: AppColors.textSecondary,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text('Remove Account'),
-        content: Text(
-          'Are you sure you want to remove "${account.displayName}" from this device? This will not delete the Firebase account.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogCtx);
-              context.read<AuthCubit>().removeSavedAccount(account.uid);
-            },
-            child: const Text(
-              'Remove',
-              style: TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

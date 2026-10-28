@@ -4,7 +4,7 @@ import 'portfolio_config.dart';
 class AppConfig {
   /// Default domain fallback for public portfolio websites.
   /// Driven by [PortfolioConfig.baseUrl].
-  static const String defaultPortfolioDomain = PortfolioConfig.baseUrl;
+  static String get defaultPortfolioDomain => PortfolioConfig.baseUrl;
 
   /// Resolves the effective portfolio domain from environment or default fallback.
   static String get portfolioDomain {

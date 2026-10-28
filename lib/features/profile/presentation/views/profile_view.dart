@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:connecthub/core/theme/theme_cubit.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/auth/presentation/widgets/manage_accounts_bottom_sheet.dart';
+import 'package:connecthub/features/home/data/models/post_model.dart';
+import 'package:connecthub/features/home/presentation/manager/cubit/posts_cubit.dart';
+import 'package:connecthub/features/home/presentation/widgets/post_card.dart';
+import 'package:connecthub/features/post/presentation/views/post_details_view.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_cubit.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_state.dart';
 import 'package:connecthub/features/profile/presentation/views/edit_profile_view.dart';
@@ -9,11 +15,8 @@ import 'package:connecthub/features/profile/presentation/views/followers_view.da
 import 'package:connecthub/features/profile/presentation/views/following_view.dart';
 import 'package:connecthub/features/profile/presentation/views/liked_posts_view.dart';
 import 'package:connecthub/features/profile/presentation/widgets/profile_card.dart';
-import 'package:connecthub/features/profile/presentation/widgets/user_post_tile.dart';
+import 'package:connecthub/features/profile/presentation/widgets/profile_posts_list.dart';
 import 'package:connecthub/features/settings/presentation/views/settings_view.dart';
-import 'package:connecthub/features/post/presentation/views/edit_post_view.dart';
-import 'package:connecthub/features/post/presentation/widgets/delete_post_dialog.dart';
-import 'package:connecthub/features/post/presentation/manager/cubit/post_action_cubit.dart';
 
 class ProfileView extends StatelessWidget {
   final bool showBackButton;
@@ -37,7 +40,7 @@ class ProfileView extends StatelessWidget {
   }
 }
 
-class _ProfileViewBody extends StatelessWidget {
+class _ProfileViewBody extends StatefulWidget {
   final bool showBackButton;
   final VoidCallback? onSwitchToPortfolio;
 
@@ -47,93 +50,141 @@ class _ProfileViewBody extends StatelessWidget {
   });
 
   @override
+  State<_ProfileViewBody> createState() => _ProfileViewBodyState();
+}
+
+class _ProfileViewBodyState extends State<_ProfileViewBody> {
+  int _selectedTab = 0; // 0: Posts, 1: Liked
+
+  void _showMoreMenu(BuildContext context, ProfileCubit cubit) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: AppColors.glassBorder),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.textHint.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.edit_outlined, color: AppColors.textPrimary),
+                title: Text('Edit Profile', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: cubit,
+                        child: const EditProfileView(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.switch_account_outlined, color: AppColors.textPrimary),
+                title: Text('Manage Accounts', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  ManageAccountsBottomSheet.show(context);
+                },
+              ),
+              if (widget.onSwitchToPortfolio != null)
+                ListTile(
+                  leading: Icon(Icons.work_outline_rounded, color: AppColors.primary),
+                  title: Text('Switch to Portfolio', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    widget.onSwitchToPortfolio!();
+                  },
+                ),
+              ListTile(
+                leading: Icon(Icons.settings_outlined, color: AppColors.textPrimary),
+                title: Text('Settings', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsView()),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top App Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Row(
-                children: [
-                  if (showBackButton) ...[
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_rounded),
+    final canGoBack = widget.showBackButton || Navigator.canPop(context);
+
+    return BlocBuilder<ThemeCubit, ThemeMode>(
+      builder: (context, themeMode) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: canGoBack
+                ? Center(
+                    child: AppIconButton(
+                      icon: Icons.arrow_back_ios_new,
+                      size: 18,
                       onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
-                    const SizedBox(width: 12),
-                  ],
-                  Text('Profile', style: AppTextStyles.headline2),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => ManageAccountsBottomSheet.show(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.manage_accounts_rounded,
-                            color: AppColors.primary,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Accounts',
-                            style: AppTextStyles.body2.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsView(),
-                      ),
-                    ),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.settings_rounded,
-                        color: AppColors.textSecondary,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
+                  )
+                : null,
+            title: Text(
+              'Profile',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
             ),
-
-            // Profile Content
-            Expanded(
+            centerTitle: true,
+            actions: [
+              const AnimatedThemeToggle(),
+              IconButton(
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  size: 22,
+                  color: AppColors.textPrimary,
+                ),
+                onPressed: () => _showMoreMenu(context, context.read<ProfileCubit>()),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: DarkGlassBackground(
+            child: SafeArea(
               child: BlocBuilder<ProfileCubit, ProfileState>(
+                buildWhen: (previous, current) =>
+                    current is ProfileLoaded ||
+                    current is ProfileLoading ||
+                    current is ProfileError,
                 builder: (context, state) {
                   if (state is ProfileLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    );
+                    return const ProfileHeaderShimmer(includePosts: true);
                   }
 
                   if (state is ProfileError) {
@@ -155,10 +206,11 @@ class _ProfileViewBody extends StatelessWidget {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
-                            ElevatedButton(
+                            SecondaryButton(
+                              text: 'Try Again',
+                              width: 130,
                               onPressed: () =>
                                   context.read<ProfileCubit>().loadProfile(),
-                              child: const Text('Try Again'),
                             ),
                           ],
                         ),
@@ -171,27 +223,40 @@ class _ProfileViewBody extends StatelessWidget {
 
                     return RefreshIndicator(
                       color: AppColors.primary,
+                      backgroundColor: AppColors.surfaceVariant,
                       onRefresh: () async {
                         cubit.loadProfile();
                       },
                       child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
                         padding: const EdgeInsets.only(bottom: 32),
                         children: [
-                          // Modern Profile Header Card
+                          // ── Redesigned Profile Header Card ───────────
                           ProfileCard(
                             user: state.user,
                             displayName: state.displayName,
                             username: state.username,
+                            headline: state.headline,
+                            location: state.location,
                             bio: state.bio,
+                            socialLinks: state.socialLinks,
                             profileImage: state.profileImage,
                             joinedDate: state.joinedDate,
                             postCount: state.userPosts.length,
                             totalLikes: state.totalLikes,
                             followersCount: state.followersCount,
                             followingCount: state.followingCount,
-                            websiteGenerated: (state.userData?['websiteGenerated'] as bool?) ?? false,
-                            websiteUrl: state.userData?['websiteUrl'] as String?,
+                            websiteGenerated:
+                                (state.userData?['websiteGenerated'] as bool?) ??
+                                    false,
+                            websiteUrl:
+                                state.userData?['websiteUrl'] as String?,
+                            selectedTabIndex: _selectedTab,
+                            onTabChanged: (idx) {
+                              setState(() => _selectedTab = idx);
+                            },
                             onEditProfile: () {
                               Navigator.push(
                                 context,
@@ -236,187 +301,89 @@ class _ProfileViewBody extends StatelessWidget {
                                 ),
                               );
                             },
-                            onSwitchToPortfolio: onSwitchToPortfolio,
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // My Posts Section Header
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(
-                              children: [
-                                Text('My Posts',
-                                    style: AppTextStyles.headline3),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '${state.userPosts.length}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                const Icon(
-                                  Icons.grid_view_rounded,
-                                  color: AppColors.textHint,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
+                            onSwitchToPortfolio: widget.onSwitchToPortfolio,
                           ),
 
                           const SizedBox(height: 12),
 
-                          // My Posts List (Newest first)
-                          if (state.userPosts.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 36,
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 64,
-                                      height: 64,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.surfaceVariant,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.article_outlined,
-                                        size: 32,
-                                        color: AppColors.textHint,
+                          // ── Feed View Based on Selected Tab ──────────
+                          if (_selectedTab == 0) ...[
+                            // User Posts List
+                            ProfilePostsList(
+                              posts: state.userPosts,
+                              userName: state.displayName,
+                              userPhoto: state.profileImage,
+                            ),
+                          ] else ...[
+                            // Liked Posts Stream
+                            StreamBuilder<List<PostModel>>(
+                              stream: cubit.getLikedPostsStream(state.user.uid),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16),
+                                    child: Column(
+                                      children: [
+                                        PostShimmerCard(),
+                                        SizedBox(height: 10),
+                                        PostShimmerCard(),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                final posts = snapshot.data ?? [];
+                                if (posts.isEmpty) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 24,
+                                    ),
+                                    child: Center(
+                                      child: EmptyStateWidget(
+                                        icon: Icons.favorite_border_rounded,
+                                        title: 'No liked posts yet',
+                                        subtitle:
+                                            'Posts you like will appear here.',
                                       ),
                                     ),
-                                    const SizedBox(height: 14),
-                                    Text(
-                                      'No posts yet',
-                                      style: AppTextStyles.body1.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Share your thoughts with the community.',
-                                      style: AppTextStyles.body2.copyWith(
-                                        color: AppColors.textHint,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          else
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: state.userPosts.length,
-                                itemBuilder: (context, index) {
-                                  final post = state.userPosts[index];
-                                  return UserPostTile(
-                                    postId: post.id,
-                                    title: post.title,
-                                    description: post.description,
-                                    imageUrl: post.imageUrl,
-                                    deleteHash: post.deleteHash,
-                                    likeCount: post.likeCount,
-                                    commentCount: post.commentCount,
-                                    createdAt: post.createdAt,
-                                    lastEditedAt: post.lastEditedAt,
-                                    onEdit: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => EditPostView(
-                                            postId: post.id,
-                                            initialTitle: post.title,
-                                            initialDescription:
-                                                post.description,
-                                            initialImageUrl: post.imageUrl,
-                                            initialDeleteHash: post.deleteHash,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    onDelete: () {
-                                      DeletePostDialog.show(
-                                        context,
-                                        description: post.description,
-                                        onConfirm: () async {
-                                          final postActionCubit =
-                                              PostActionCubit();
-                                          try {
-                                            await postActionCubit.deletePost(
-                                              postId: post.id,
-                                              deleteHash: post.deleteHash,
-                                            );
-                                            if (context.mounted) {
-                                              context
-                                                  .read<ProfileCubit>()
-                                                  .loadProfile();
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: const Text(
-                                                      'Post deleted successfully!'),
-                                                  backgroundColor:
-                                                      AppColors.success,
-                                                  behavior: SnackBarBehavior
-                                                      .floating,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content:
-                                                      Text(e.toString()),
-                                                  backgroundColor:
-                                                      AppColors.error,
-                                                  behavior: SnackBarBehavior
-                                                      .floating,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          }
+                                  );
+                                }
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  child: ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: posts.length,
+                                    itemBuilder: (context, index) {
+                                      final post = posts[index];
+                                      return PostCard(
+                                        post: post,
+                                        isOwnPost: post.userId == state.user.uid,
+                                        onLike: () {
+                                          context
+                                              .read<PostsCubit>()
+                                              .toggleLike(post.id, state.user.uid);
+                                        },
+                                        onComment: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => PostDetailsView(
+                                                  postId: post.id),
+                                            ),
+                                          );
                                         },
                                       );
                                     },
-                                  );
-                                },
-                              ),
+                                  ),
+                                );
+                              },
                             ),
+                          ],
                         ],
                       ),
                     );
@@ -426,11 +393,9 @@ class _ProfileViewBody extends StatelessWidget {
                 },
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
-
-
 }

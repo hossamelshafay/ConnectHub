@@ -36,12 +36,12 @@ class WebTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: WebColors.background,
-      primaryColor: WebColors.primary,
+      scaffoldBackgroundColor: WebColors.darkBackground,
+      primaryColor: WebColors.darkPrimary,
       colorScheme: const ColorScheme.dark(
-        primary: WebColors.primary,
-        secondary: WebColors.accent,
-        surface: WebColors.surface,
+        primary: WebColors.darkPrimary,
+        secondary: WebColors.darkPrimaryLight,
+        surface: WebColors.darkSurface,
       ),
       useMaterial3: true,
     );

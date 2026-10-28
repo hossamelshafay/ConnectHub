@@ -17,14 +17,23 @@ class PortfolioCubit extends Cubit<PortfolioState> {
   StreamSubscription<List<ExperienceModel>>? _experienceSub;
   StreamSubscription<List<EducationModel>>? _educationSub;
   StreamSubscription<List<CertificateModel>>? _certificatesSub;
+  String? _loadedUid;
 
   PortfolioCubit({PortfolioRepo? repo})
       : _repo = repo ?? PortfolioRepoImp(),
         super(PortfolioInitial());
 
   void loadPortfolio(String uid) {
-    emit(PortfolioLoading());
+    if (_loadedUid == uid && state is PortfolioLoaded && _userSub != null) {
+      // Streams are already live and listening; avoid duplicating listeners.
+      return;
+    }
+
+    if (state is! PortfolioLoaded) {
+      emit(PortfolioLoading());
+    }
     _cancelSubs();
+    _loadedUid = uid;
 
     _userSub = _repo.getPortfolioStream(uid).listen(
       (user) {
@@ -83,6 +92,7 @@ class PortfolioCubit extends Cubit<PortfolioState> {
     String? about,
     String? location,
     String? phone,
+    String? cvLink,
     SocialLinksModel? socialLinks,
     String? githubUsername,
     String? profileSlug,
@@ -99,6 +109,7 @@ class PortfolioCubit extends Cubit<PortfolioState> {
         about: about,
         location: location,
         phone: phone,
+        cvLink: cvLink,
         socialLinks: socialLinks,
         githubUsername: githubUsername,
         profileSlug: profileSlug,

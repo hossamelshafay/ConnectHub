@@ -7,6 +7,8 @@ import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo_imp.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'package:connecthub/features/profile/presentation/manager/cubit/profile_cubit.dart';
+import 'package:connecthub/features/settings/presentation/widgets/change_email_current_card.dart';
+import 'package:connecthub/features/settings/presentation/widgets/change_email_dialogs.dart';
 
 class ChangeEmailView extends StatefulWidget {
   const ChangeEmailView({super.key});
@@ -168,60 +170,10 @@ class _ChangeEmailViewState extends State<ChangeEmailView> {
             ),
           );
         } else {
-          // Alert the user that a confirmation link was sent
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Row(
-                children: [
-                  Icon(Icons.mark_email_unread_rounded, color: AppColors.primary, size: 28),
-                  SizedBox(width: 10),
-                  Text('Verification Link Sent'),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'A verification link was sent to:\n$newEmail',
-                    style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Firebase Authentication requires you to click the link sent to your inbox to finalize the change before logging in with your new email.',
-                    style: AppTextStyles.body2,
-                  ),
-                  if (directUpdateError != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Reason for verification email: Firebase project enforces email verification before update ($directUpdateError).',
-                        style: AppTextStyles.caption.copyWith(fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('I Understand'),
-                ),
-              ],
-            ),
+          await showChangeEmailVerificationDialog(
+            context,
+            newEmail: newEmail,
+            directUpdateError: directUpdateError,
           );
         }
 
@@ -291,7 +243,7 @@ class _ChangeEmailViewState extends State<ChangeEmailView> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_rounded,
             color: AppColors.textPrimary,
           ),
@@ -307,55 +259,7 @@ class _ChangeEmailViewState extends State<ChangeEmailView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Info header card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.mail_outline_rounded,
-                          color: AppColors.primary,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Current Email',
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              currentEmail.isNotEmpty ? currentEmail : 'No email set',
-                              style: AppTextStyles.body1.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
+                ChangeEmailCurrentCard(currentEmail: currentEmail),
                 const SizedBox(height: 28),
 
                 // New Email

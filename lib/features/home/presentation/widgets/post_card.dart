@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,11 +7,12 @@ import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/core/utils/mention_text.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
+import 'package:connecthub/features/home/presentation/widgets/post_card_actions.dart';
+import 'package:connecthub/features/home/presentation/widgets/post_card_header.dart';
 import 'package:connecthub/features/post/presentation/views/post_details_view.dart';
-import 'package:connecthub/core/utils/profile_navigation_helper.dart';
 import 'package:connecthub/features/chat/presentation/widgets/share_post_sheet.dart';
 
-class PostCard extends StatelessWidget {
+class PostCard extends StatefulWidget {
   final PostModel post;
   final VoidCallback onLike;
   final VoidCallback onComment;
@@ -29,245 +31,165 @@ class PostCard extends StatelessWidget {
   });
 
   @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _likeController;
+  late final Animation<double> _likeScaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _likeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _likeScaleAnim = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.22)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.22, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 50,
+      ),
+    ]).animate(_likeController);
+  }
+
+  @override
+  void dispose() {
+    _likeController.dispose();
+    super.dispose();
+  }
+
+  void _handleLike() {
+    HapticFeedback.lightImpact();
+    _likeController.forward(from: 0.0);
+    widget.onLike();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final isLiked = post.likes.contains(currentUserId);
-    final timeAgo = _getTimeAgo(post.createdAt);
+    final isLiked = widget.post.likes.contains(currentUserId);
+    final timeAgo = _getTimeAgo(widget.post.createdAt);
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => PostDetailsView(postId: post.id)),
+          MaterialPageRoute(
+            builder: (_) => PostDetailsView(postId: widget.post.id),
+          ),
         );
       },
       onLongPress: () => _openShareSheet(context),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: isOwnPost
-              ? Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  width: 2,
-                )
-              : null,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: widget.isOwnPost
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : AppColors.glassBorder,
+            width: 1.0,
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadow.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 1.5),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isOwnPost)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.accent],
-                  ),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PostCardHeader(
+                  userId: widget.post.userId,
+                  userName: widget.post.userName,
+                  timeAgo: timeAgo,
+                  isOwnPost: widget.isOwnPost,
+                  isEdited: widget.post.lastEditedAt != null,
+                  onEdit: widget.onEdit,
+                  onDelete: widget.onDelete,
+                ),
+
+                const SizedBox(height: 8),
+                Text(
+                  widget.post.title,
+                  style: AppTextStyles.headline3.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                child: const Center(
-                  child: Text(
-                    'Your Post',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                const SizedBox(height: 4),
+                MentionText(
+                  text: widget.post.description,
+                  style: AppTextStyles.body2.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.4,
                   ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => ProfileNavigationHelper.openUserProfile(
-                            context,
-                            userId: post.userId,
-                            userName: post.userName,
-                          ),
-                          child: Row(
-                            children: [
-                              UserAvatarById(
-                                userId: post.userId,
-                                fallbackName: post.userName,
-                                size: 44,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      post.userName,
-                                      style: AppTextStyles.body1.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        Text(timeAgo, style: AppTextStyles.caption),
-                                        if (post.lastEditedAt != null) ...[
-                                          const SizedBox(width: 4),
-                                          const Text('•', style: AppTextStyles.caption),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Edited',
-                                            style: AppTextStyles.caption.copyWith(
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (isOwnPost && (onEdit != null || onDelete != null))
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert,
-                              color: AppColors.textSecondary),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              onEdit?.call();
-                            } else if (value == 'delete') {
-                              onDelete?.call();
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            if (onEdit != null)
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit_outlined,
-                                        size: 20, color: AppColors.textPrimary),
-                                    SizedBox(width: 12),
-                                    Text('Edit Post'),
-                                  ],
-                                ),
-                              ),
-                            if (onDelete != null)
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.delete_outline,
-                                        size: 20, color: AppColors.error),
-                                    SizedBox(width: 12),
-                                    Text('Delete Post',
-                                        style: TextStyle(color: AppColors.error)),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        )
-                      else if (!isOwnPost)
-                        const Icon(
-                          Icons.chevron_right,
-                          size: 16,
-                          color: AppColors.textHint,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(post.title, style: AppTextStyles.headline3),
-                  const SizedBox(height: 8),
-                  MentionText(
-                    text: post.description,
-                    style: AppTextStyles.body2,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: CachedNetworkImage(
-                          imageUrl: post.imageUrl!,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          placeholder: (_, _) => Container(
-                            color: AppColors.surfaceVariant,
-                            child: const Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                          errorWidget: (_, _, _) => Container(
-                            color: AppColors.surfaceVariant,
-                            child: const Icon(
-                              Icons.broken_image_outlined,
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 14),
-                  const Divider(color: AppColors.divider, height: 1),
+
+                // Post Image with Dark Shimmer placeholder
+                if (widget.post.imageUrl != null &&
+                    widget.post.imageUrl!.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _ActionButton(
-                          icon: isLiked ? Icons.favorite : Icons.favorite_border,
-                          label: '${post.likeCount}',
-                          color: isLiked ? AppColors.accent : AppColors.textHint,
-                          onTap: onLike,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 8.5,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.post.imageUrl!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => const ShimmerBox(
+                          width: double.infinity,
+                          height: double.infinity,
+                          borderRadius: 12,
                         ),
-                        const SizedBox(width: 20),
-                        _ActionButton(
-                          icon: Icons.chat_bubble_outline,
-                          label: '${post.commentCount}',
-                          color: AppColors.textHint,
-                          onTap: onComment,
+                        errorWidget: (_, _, _) => Container(
+                          color: AppColors.surfaceVariant,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: AppColors.textHint,
+                            size: 24,
+                          ),
                         ),
-                        const SizedBox(width: 20),
-                        _ActionButton(
-                          icon: Icons.share_outlined,
-                          label: 'Share',
-                          color: AppColors.textHint,
-                          onTap: () => _openShareSheet(context),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
-              ),
+
+                const SizedBox(height: 10),
+                Divider(color: AppColors.divider, height: 1),
+                const SizedBox(height: 6),
+
+                // Action buttons row: Like, Comment, Share
+                PostCardActions(
+                  isLiked: isLiked,
+                  likeCount: widget.post.likeCount,
+                  commentCount: widget.post.commentCount,
+                  likeScaleAnim: _likeScaleAnim,
+                  onLike: _handleLike,
+                  onComment: widget.onComment,
+                  onShare: () => _openShareSheet(context),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -279,17 +201,19 @@ class PostCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please log in to share posts.'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.surfaceVariant,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppColors.error, width: 1),
+          ),
         ),
       );
       return;
     }
     SharePostSheet.show(
       context,
-      post: post,
+      post: widget.post,
       myUid: user.uid,
       myName: (user.displayName != null && user.displayName!.trim().isNotEmpty)
           ? user.displayName!.trim()
@@ -310,43 +234,5 @@ class PostCard extends StatelessWidget {
     } else {
       return 'Just now';
     }
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: AppTextStyles.body2.copyWith(
-                color: color,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

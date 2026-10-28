@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connecthub/core/utils/app_theme.dart';
 
 enum ProfileSwitchTarget { portfolio, social }
 
@@ -19,13 +20,9 @@ class PortfolioSwitchButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPortfolio = target == ProfileSwitchTarget.portfolio;
-    final primaryColor = isDarkTheme ? const Color(0xFF38BDF8) : Colors.white;
-    final backgroundColor = isDarkTheme
-        ? const Color(0xFF38BDF8).withValues(alpha: 0.08)
-        : Colors.white.withValues(alpha: 0.12);
-    final borderColor = isDarkTheme
-        ? const Color(0xFF38BDF8).withValues(alpha: 0.6)
-        : Colors.white.withValues(alpha: 0.85);
+    final primaryColor = AppColors.primary;
+    final backgroundColor = AppColors.primary.withValues(alpha: 0.08);
+    final borderColor = AppColors.primary.withValues(alpha: 0.4);
 
     return SizedBox(
       width: double.infinity,

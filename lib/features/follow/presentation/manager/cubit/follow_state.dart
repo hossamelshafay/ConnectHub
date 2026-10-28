@@ -1,3 +1,5 @@
+import 'package:connecthub/features/profile/data/models/user_model.dart';
+
 abstract class FollowState {}
 
 class FollowInitial extends FollowState {}
@@ -12,6 +14,9 @@ class FollowLoaded extends FollowState {
   final String? profileImage;
   final String? username;
   final String? bio;
+  final String? headline;
+  final String? location;
+  final SocialLinksModel socialLinks;
   final bool websiteGenerated;
   final String? websiteUrl;
 
@@ -23,6 +28,9 @@ class FollowLoaded extends FollowState {
     this.profileImage,
     this.username,
     this.bio,
+    this.headline,
+    this.location,
+    this.socialLinks = const SocialLinksModel(),
     this.websiteGenerated = false,
     this.websiteUrl,
   });

@@ -18,6 +18,7 @@ abstract class PortfolioRepo {
     String? about,
     String? location,
     String? phone,
+    String? cvLink,
     SocialLinksModel? socialLinks,
     String? githubUsername,
     String? profileSlug,

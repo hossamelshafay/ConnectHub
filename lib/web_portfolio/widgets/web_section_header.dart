@@ -35,20 +35,21 @@ class WebSectionHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: WebColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(4),
-              border: const Border.fromBorderSide(
-                BorderSide(color: WebColors.border, width: 1),
+              color: (isDark ? WebColors.darkPrimary : WebColors.lightPrimary).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? WebColors.darkBorder : WebColors.lightBorder,
+                width: 1,
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 5,
-                  height: 5,
-                  decoration: const BoxDecoration(
-                    color: WebColors.primary,
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary,
                     shape: BoxShape.circle,
                   ),
                 ),

@@ -54,7 +54,7 @@ class PortfolioSyncService {
       DocumentReference portfolioRef = _firestore.collection('public_portfolios').doc(docId);
       DocumentSnapshot existingDoc = await portfolioRef.get();
 
-      if (!existingDoc.exists) {
+      if (!existingDoc.exists || (existingDoc.data() as Map<String, dynamic>?)?['uid'] != uid) {
         final querySnap = await _firestore
             .collection('public_portfolios')
             .where('uid', isEqualTo: uid)
@@ -65,7 +65,7 @@ class PortfolioSyncService {
           portfolioRef = existingDoc.reference;
           docId = portfolioRef.id;
         } else {
-          debugPrint('[PortfolioSync] No public_portfolios/$docId found — skipping sync.');
+          debugPrint('[PortfolioSync] No public_portfolios owned by $uid found — skipping sync.');
           return;
         }
       }
@@ -123,7 +123,8 @@ class PortfolioSyncService {
         experience: experience,
         education: education,
         certificates: certificates,
-        resumeUrl: user.resumeUrl,
+        cvLink: user.cvLink ?? user.resumeUrl,
+        resumeUrl: user.cvLink ?? user.resumeUrl,
         publicPortfolioUrl: publicUrl,
         isPublic: true,
         version: '1.0.0',

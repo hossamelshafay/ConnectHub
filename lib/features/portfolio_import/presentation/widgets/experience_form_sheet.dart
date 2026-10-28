@@ -3,33 +3,62 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/portfolio/data/models/experience_model.dart';
 import 'package:connecthub/features/portfolio_import/presentation/cubit/portfolio_editor_cubit.dart';
 
+import 'package:connecthub/features/portfolio/presentation/cubit/portfolio_cubit.dart';
+import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/features/portfolio_import/presentation/widgets/portfolio_form_field.dart';
+
 class ExperienceFormSheet extends StatefulWidget {
   final String uid;
   final ExperienceModel? experience;
+  final PortfolioCubit? portfolioCubit;
 
   const ExperienceFormSheet({
     super.key,
     required this.uid,
     this.experience,
+    this.portfolioCubit,
   });
 
   static Future<void> show(
     BuildContext context, {
     required String uid,
     ExperienceModel? experience,
+    PortfolioCubit? portfolioCubit,
   }) {
     final cubit = context.read<PortfolioEditorCubit>();
+    PortfolioCubit? effectivePortfolioCubit = portfolioCubit;
+    if (effectivePortfolioCubit == null) {
+      try {
+        effectivePortfolioCubit = context.read<PortfolioCubit>();
+      } catch (_) {}
+    }
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: isDark ? const Color(0xFF1C1A18) : const Color(0xFFFAF8F5),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => BlocProvider.value(
-        value: cubit,
-        child: ExperienceFormSheet(uid: uid, experience: experience),
-      ),
+      builder: (_) {
+        Widget content = ExperienceFormSheet(
+          uid: uid,
+          experience: experience,
+          portfolioCubit: effectivePortfolioCubit,
+        );
+        if (effectivePortfolioCubit != null) {
+          content = BlocProvider.value(
+            value: effectivePortfolioCubit,
+            child: content,
+          );
+        }
+        return BlocProvider.value(
+          value: cubit,
+          child: content,
+        );
+      },
     );
   }
 
@@ -91,17 +120,28 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
     );
 
     final cubit = context.read<PortfolioEditorCubit>();
+    PortfolioCubit? portCubit = widget.portfolioCubit;
+    if (portCubit == null) {
+      try {
+        portCubit = context.read<PortfolioCubit>();
+      } catch (_) {}
+    }
+
     if (widget.experience != null) {
       await cubit.updateExperience(uid: widget.uid, experience: model);
     } else {
       await cubit.addExperience(uid: widget.uid, experience: model);
     }
 
+    portCubit?.loadPortfolio(widget.uid);
+
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isEditing = widget.experience != null;
     return DraggableScrollableSheet(
       expand: false,
@@ -124,7 +164,7 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF475569),
+                    color: isDark ? const Color(0xFF55504A) : const Color(0xFFD4CDC5),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -132,21 +172,21 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
               const SizedBox(height: 16),
               Text(
                 isEditing ? 'Edit Experience' : 'Add Experience',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 20),
-              _buildField(
+              PortfolioFormField(
                 label: 'ROLE / TITLE *',
                 controller: _roleCtrl,
                 validator: (val) =>
                     (val == null || val.trim().isEmpty) ? 'Role is required' : null,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'COMPANY *',
                 controller: _companyCtrl,
                 validator: (val) => (val == null || val.trim().isEmpty)
@@ -154,17 +194,17 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
                     : null,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'LOCATION',
                 controller: _locationCtrl,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'SKILLS / TECHNOLOGIES (COMMA SEPARATED)',
                 controller: _skillsCtrl,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'DESCRIPTION / RESPONSIBILITIES',
                 controller: _descriptionCtrl,
                 maxLines: 4,
@@ -174,12 +214,12 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
                 contentPadding: EdgeInsets.zero,
                 value: _isCurrent,
                 onChanged: (val) => setState(() => _isCurrent = val ?? false),
-                title: const Text(
+                title: Text(
                   'I currently work here',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 ),
-                activeColor: const Color(0xFF38BDF8),
-                checkColor: const Color(0xFF0F172A),
+                activeColor: AppColors.primary,
+                checkColor: AppColors.isDark ? const Color(0xFF141210) : Colors.white,
               ),
               const SizedBox(height: 20),
               Row(
@@ -187,8 +227,8 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF94A3B8),
-                        side: const BorderSide(color: Color(0xFF334155)),
+                        foregroundColor: AppColors.textMuted,
+                        side: BorderSide(color: AppColors.glassBorder),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -202,8 +242,8 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF38BDF8),
-                        foregroundColor: const Color(0xFF0F172A),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.isDark ? const Color(0xFF141210) : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -222,61 +262,6 @@ class _ExperienceFormSheetState extends State<ExperienceFormSheet> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildField({
-    required String label,
-    required TextEditingController controller,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          validator: validator,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF0F172A),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF334155)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF334155)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF38BDF8)),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,18 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../features/portfolio/data/models/experience_model.dart';
 import '../theme/web_colors.dart';
-import '../theme/web_text_styles.dart';
-import '../theme/web_theme.dart';
 import '../models/portfolio_view_data.dart';
-import '../widgets/responsive_container.dart';
-import '../widgets/web_section_header.dart';
-import '../widgets/tech_badge.dart';
 import '../widgets/section_empty_state.dart';
-import '../animations/entrance_fader.dart';
-import '../animations/hover_tilt_card.dart';
 
-/// Experience Section featuring a modern vertical timeline layout.
+/// Experience Section card matching the Titanium/Beige mockup design.
 class ExperienceSection extends StatelessWidget {
   final PortfolioViewData data;
   final bool isDark;
@@ -25,258 +17,235 @@ class ExperienceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = WebTheme.isMobile(context);
+    if (data.experiences.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? WebColors.darkSurfaceCard : WebColors.lightSurface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? WebColors.darkBorder : WebColors.lightBorder,
+          ),
+        ),
+        child: SectionEmptyState(
+          icon: Icons.business_center_outlined,
+          message: 'No experience added yet.',
+          isDark: isDark,
+        ),
+      );
+    }
 
-    return ResponsiveContainer(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16.0 : 48.0,
-        vertical: isMobile ? 40.0 : 80.0,
+    final dateFormat = DateFormat('MMM yyyy');
+
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: isDark ? WebColors.darkSurfaceCard : WebColors.lightSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? WebColors.darkBorder : WebColors.lightBorder,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 22,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          WebSectionHeader(
-            eyebrow: 'Experience',
-            title: 'Experience',
-            subtitle: null,
-            isDark: isDark,
-          ),
-
-          if (data.experiences.isEmpty)
-            SectionEmptyState(
-              icon: Icons.work_outline_rounded,
-              message: 'No experience added yet.',
-              isDark: isDark,
-            )
-          else
-            // Timeline Container
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: data.experiences.length,
-              itemBuilder: (context, index) {
-                final exp = data.experiences[index];
-                final isLast = index == data.experiences.length - 1;
-                return _buildTimelineItem(exp, isLast, index, isMobile);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimelineItem(
-    ExperienceModel exp,
-    bool isLast,
-    int index,
-    bool isMobile,
-  ) {
-    final dateFormat = DateFormat('MMM yyyy');
-    final startDateStr = exp.startDate != null ? dateFormat.format(exp.startDate!) : '';
-    final endDateStr = exp.isCurrent
-        ? 'Present'
-        : (exp.endDate != null ? dateFormat.format(exp.endDate!) : '');
-    final periodStr = '$startDateStr — $endDateStr';
-
-    final indicatorWidth = isMobile ? 24.0 : 32.0;
-    final cardLeftSpacing = isMobile ? 12.0 : 16.0;
-
-    return EntranceFader(
-      delay: Duration(milliseconds: 120 * index),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Timeline line and glowing indicator
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: indicatorWidth,
-            child: Column(
-              children: [
-                SizedBox(height: isMobile ? 20 : 28),
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: exp.isCurrent ? WebColors.primaryLight : WebColors.border,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: exp.isCurrent ? WebColors.primary : WebColors.border,
-                      width: 2.0,
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? WebColors.darkPrimary.withValues(alpha: 0.18)
+                          : const Color(0xFFF0EAE1),
+                      shape: BoxShape.circle,
                     ),
-                    boxShadow: exp.isCurrent
-                        ? [
-                            BoxShadow(
-                              color: WebColors.primaryLight.withValues(alpha: 0.5),
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : null,
+                    child: Icon(
+                      Icons.business_center_outlined,
+                      size: 20,
+                      color: isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Experience',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 17.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? WebColors.darkTextPrimary : const Color(0xFF1B1917),
+                    ),
+                  ),
+                ],
+              ),
+              // View all Pill Button
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? WebColors.darkSurface.withValues(alpha: 0.8)
+                      : const Color(0xFFF7F3EC),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: isDark ? WebColors.darkBorder : const Color(0xFFE2DCD1),
                   ),
                 ),
-                const SizedBox(height: 6),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: isDark
-                          ? WebColors.border
-                          : WebColors.lightBorder,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Experience Card Content (drives the height naturally without any tight vertical constraints)
-          Padding(
-            padding: EdgeInsets.only(
-              left: indicatorWidth + cardLeftSpacing,
-              bottom: 28,
-            ),
-            child: HoverTiltCard(
-              backgroundColor: isDark ? WebColors.surfaceCard : WebColors.lightSurface,
-              borderColor: isDark ? WebColors.border : WebColors.lightBorder,
-              hoverBorderColor: WebColors.accent,
-              borderRadius: BorderRadius.circular(16),
-              enableScale: true,
-              hoverScale: 1.012,
-              child: Padding(
-                padding: EdgeInsets.all(isMobile ? 16 : 24),
-                child: Column(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View all',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? WebColors.darkTextSecondary : const Color(0xFF4A433D),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 13,
+                      color: isDark ? WebColors.darkTextSecondary : const Color(0xFF4A433D),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+
+          // Experience Timeline List
+          Column(
+            children: data.experiences.asMap().entries.map((entry) {
+              final index = entry.key;
+              final exp = entry.value;
+              final isLast = index == data.experiences.length - 1;
+
+              final startDateStr = exp.startDate != null ? dateFormat.format(exp.startDate!) : '';
+              final endDateStr = exp.isCurrent
+                  ? 'Present'
+                  : (exp.endDate != null ? dateFormat.format(exp.endDate!) : '');
+              final dateStr = '$startDateStr – $endDateStr';
+
+              return IntrinsicHeight(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Role & Current Badge
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    // Timeline vertical line + dot
+                    Column(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                exp.role,
-                                style: WebTextStyles.cardTitle(isDark: isDark).copyWith(
-                                  fontSize: isMobile ? 17 : 19,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                exp.company,
-                                style: WebTextStyles.cardSubtitle(isDark: isDark).copyWith(
-                                  color: WebColors.primaryLight,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                        Container(
+                          width: 8.5,
+                          height: 8.5,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF88735C) : const Color(0xFF88735C),
+                            shape: BoxShape.circle,
                           ),
                         ),
-                        if (exp.isCurrent)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: WebColors.emeraldAccent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: WebColors.emeraldAccent.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Text(
-                              'Current',
-                              style: WebTextStyles.bodySmall(isDark: isDark).copyWith(
-                                color: WebColors.emeraldAccent,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11,
-                              ),
+                        if (!isLast)
+                          Expanded(
+                            child: Container(
+                              width: 1.5,
+                              color: isDark
+                                  ? WebColors.darkBorder
+                                  : const Color(0xFFE2DCD1),
                             ),
                           ),
                       ],
                     ),
+                    const SizedBox(width: 14),
 
-                    const SizedBox(height: 12),
-
-                    // Date and Location Meta with Safe Wrap to prevent overflow on 320px
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 260),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.calendar_today_rounded,
-                                size: 13,
-                                color: isDark ? WebColors.textMuted : WebColors.lightTextMuted,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  periodStr,
-                                  style: WebTextStyles.bodySmall(isDark: isDark).copyWith(fontSize: 12),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (exp.location != null)
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 200),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                    // Content
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: isLast ? 0 : 22),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
-                                Icon(
-                                  Icons.location_on_outlined,
-                                  size: 13,
-                                  color: isDark ? WebColors.textMuted : WebColors.lightTextMuted,
+                                Text(
+                                  exp.role,
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? WebColors.darkTextPrimary : const Color(0xFF1C1917),
+                                  ),
                                 ),
-                                const SizedBox(width: 4),
-                                Flexible(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? WebColors.darkSurface
+                                        : const Color(0xFFF7F4EE),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isDark ? WebColors.darkBorder : const Color(0xFFEAE3D6),
+                                      width: 0.8,
+                                    ),
+                                  ),
                                   child: Text(
-                                    exp.location!,
-                                    style: WebTextStyles.bodySmall(isDark: isDark).copyWith(fontSize: 12),
-                                    overflow: TextOverflow.ellipsis,
+                                    dateStr,
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark ? WebColors.darkTextMuted : const Color(0xFF6B6258),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Description
-                    Text(
-                      exp.description,
-                      style: WebTextStyles.bodyMedium(isDark: isDark).copyWith(
-                        fontSize: 13.5,
-                        height: 1.6,
+                            const SizedBox(height: 3),
+                            Text(
+                              exp.company + (exp.location != null ? ' • ${exp.location}' : ''),
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? WebColors.darkPrimaryLight : const Color(0xFF6B6258),
+                              ),
+                            ),
+                            if (exp.description.trim().isNotEmpty) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                exp.description,
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.45,
+                                  color: isDark ? WebColors.darkTextSecondary : const Color(0xFF5A524A),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
-
-                    // Skills chips
-                    if (exp.skills.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: exp.skills.map((skill) {
-                          return TechBadge(label: skill, isDark: isDark);
-                        }).toList(),
-                      ),
-                    ],
                   ],
                 ),
-              ),
-            ),
+              );
+            }).toList(),
           ),
         ],
       ),

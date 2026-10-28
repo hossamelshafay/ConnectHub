@@ -25,10 +25,22 @@ class _SocialIconButtonState extends State<SocialIconButton> {
   bool _isHovered = false;
 
   Future<void> _launch() async {
-    if (widget.url == null || widget.url!.isEmpty) return;
-    final uri = Uri.tryParse(widget.url!);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final raw = widget.url?.trim();
+    if (raw == null || raw.isEmpty) return;
+    final normalized = (raw.startsWith('http://') || raw.startsWith('https://'))
+        ? raw
+        : 'https://$raw';
+    final uri = Uri.tryParse(normalized);
+    if (uri != null) {
+      try {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+          webOnlyWindowName: '_blank',
+        );
+      } catch (e) {
+        debugPrint('[SocialIconButton] Launch failed for $uri: $e');
+      }
     }
   }
 
@@ -47,19 +59,19 @@ class _SocialIconButtonState extends State<SocialIconButton> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: _isHovered
-                  ? WebColors.primary.withValues(alpha: 0.18)
-                  : (widget.isDark ? WebColors.surfaceElevated : const Color(0xFFF1F5F9)),
+                  ? (widget.isDark ? WebColors.darkPrimary : WebColors.lightPrimary).withValues(alpha: 0.18)
+                  : (widget.isDark ? WebColors.darkSurface : const Color(0xFFF7F4EE)),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _isHovered
-                    ? WebColors.primaryLight
-                    : (widget.isDark ? WebColors.border : const Color(0xFFE2E8F0)),
+                    ? (widget.isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary)
+                    : (widget.isDark ? WebColors.darkBorder : const Color(0xFFEAE3D6)),
                 width: 1.2,
               ),
               boxShadow: _isHovered
                   ? [
                       BoxShadow(
-                        color: WebColors.primary.withValues(alpha: 0.3),
+                        color: (widget.isDark ? WebColors.darkPrimary : WebColors.lightPrimary).withValues(alpha: 0.25),
                         blurRadius: 12,
                         spreadRadius: 1,
                       ),
@@ -70,8 +82,8 @@ class _SocialIconButtonState extends State<SocialIconButton> {
               widget.icon,
               size: 20,
               color: _isHovered
-                  ? WebColors.primaryLight
-                  : (widget.isDark ? WebColors.textSecondary : WebColors.lightTextSecondary),
+                  ? (widget.isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary)
+                  : (widget.isDark ? WebColors.darkTextSecondary : WebColors.lightTextSecondary),
             ),
           ),
         ),

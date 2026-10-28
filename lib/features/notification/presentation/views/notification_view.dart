@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/notification/data/models/notification_model.dart';
 import 'package:connecthub/features/notification/presentation/manager/cubit/notification_cubit.dart';
 import 'package:connecthub/features/notification/presentation/manager/cubit/notification_state.dart';
@@ -18,77 +19,97 @@ class NotificationView extends StatefulWidget {
 
 class _NotificationViewState extends State<NotificationView> {
   @override
-  void initState() {
-    super.initState();
-    // Mark all as read once the screen is visible.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null && mounted) {
-        context.read<NotificationCubit>().markAllAsRead(uid);
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Text('Notifications', style: AppTextStyles.headline2),
-            ),
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: Navigator.canPop(context)
+            ? Center(
+                child: AppIconButton(
+                  icon: Icons.arrow_back_ios_new,
+                  size: 18,
+                  onPressed: () => Navigator.pop(context),
+                ),
+              )
+            : null,
+        title: Text('Notifications', style: AppTextStyles.headline3),
+        centerTitle: true,
+        actions: [
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              final unread =
+                  state is NotificationLoaded ? state.unreadCount : 0;
+              if (unread == 0) return const SizedBox.shrink();
 
-            // Content
-            Expanded(
-              child: BlocBuilder<NotificationCubit, NotificationState>(
-                builder: (context, state) {
-                  if (state is NotificationLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    );
+              return TextButton(
+                onPressed: () {
+                  if (currentUserId != null) {
+                    context.read<NotificationCubit>().markAllAsRead(currentUserId);
                   }
-
-                  if (state is NotificationError) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: AppColors.textHint,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(state.message, style: AppTextStyles.body2),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (state is NotificationLoaded) {
-                    if (state.notifications.isEmpty) {
-                      return _EmptyState();
-                    }
-                    return _NotificationList(
-                      notifications: state.notifications,
-                      onTap: _handleTap,
-                    );
-                  }
-
-                  // NotificationInitial
-                  return const SizedBox.shrink();
                 },
-              ),
-            ),
-          ],
+                child: Text(
+                  'Mark all read',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: DarkGlassBackground(
+        child: SafeArea(
+          child: BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              if (state is NotificationLoading) {
+                return const NotificationTileShimmer(itemCount: 7);
+              }
+
+              if (state is NotificationError) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline_rounded,
+                        size: 48,
+                        color: AppColors.textHint,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(state.message, style: AppTextStyles.body2),
+                    ],
+                  ),
+                );
+              }
+
+              if (state is NotificationLoaded) {
+                if (state.notifications.isEmpty) {
+                  return Center(
+                    child: EmptyStateWidget(
+                      icon: Icons.notifications_none_rounded,
+                      title: 'No notifications',
+                      subtitle:
+                          'When someone interacts with your posts or profile, you\'ll see it here.',
+                    ),
+                  );
+                }
+                return _NotificationList(
+                  notifications: state.notifications,
+                  onTap: _handleTap,
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
     );
@@ -103,8 +124,7 @@ class _NotificationViewState extends State<NotificationView> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) =>
-                  PostDetailsView(postId: notification.postId!),
+              builder: (_) => PostDetailsView(postId: notification.postId!),
             ),
           );
         }
@@ -119,10 +139,6 @@ class _NotificationViewState extends State<NotificationView> {
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// Grouped list
-// ---------------------------------------------------------------------------
 
 class _NotificationList extends StatelessWidget {
   final List<NotificationModel> notifications;
@@ -152,85 +168,30 @@ class _NotificationList extends StatelessWidget {
         .toList();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+      padding: const EdgeInsets.only(bottom: 32),
       children: [
         if (today.isNotEmpty) ...[
-          _SectionHeader(label: 'Today'),
+          const SectionHeader(title: 'Today'),
           ...today.map((n) => NotificationItem(
                 notification: n,
                 onTap: () => onTap(context, n),
               )),
         ],
         if (yesterday.isNotEmpty) ...[
-          _SectionHeader(label: 'Yesterday'),
+          const SectionHeader(title: 'Yesterday'),
           ...yesterday.map((n) => NotificationItem(
                 notification: n,
                 onTap: () => onTap(context, n),
               )),
         ],
         if (earlier.isNotEmpty) ...[
-          _SectionHeader(label: 'Earlier'),
+          const SectionHeader(title: 'Earlier'),
           ...earlier.map((n) => NotificationItem(
                 notification: n,
                 onTap: () => onTap(context, n),
               )),
         ],
       ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-      child: Text(
-        label,
-        style: AppTextStyles.body2.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textHint,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
-
-class _EmptyState extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.notifications_none_rounded,
-            size: 72,
-            color: AppColors.textHint.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No notifications yet',
-            style: AppTextStyles.headline3.copyWith(
-              color: AppColors.textHint,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'When someone likes or comments on\nyour posts, you\'ll see it here.',
-            style: AppTextStyles.body2,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
     );
   }
 }

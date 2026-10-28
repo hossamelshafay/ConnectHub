@@ -31,7 +31,7 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -61,8 +61,8 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
               stream: widget.repo.getConversationsStream(widget.myUid),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(32),
+                  return Padding(
+                    padding: const EdgeInsets.all(32),
                     child: Center(
                       child: CircularProgressIndicator(color: AppColors.primary),
                     ),

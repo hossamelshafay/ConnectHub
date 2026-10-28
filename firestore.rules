@@ -28,7 +28,7 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && (
 
-        // ① Profile owner updating their own fields (name, email, etc.)
+        // 1 Profile owner updating their own fields (name, email, etc.)
         //   Owners may NOT directly write counter fields; those are only
         //   reachable through the validated follow/unfollow paths below.
         (
@@ -38,7 +38,7 @@ service cloud.firestore {
 
         ||
 
-        // ② Updating followersCount (+1 on follow, -1 on unfollow or removal).
+        // 2 Updating followersCount (+1 on follow, -1 on unfollow or removal).
         (
           changedKeys().hasOnly(['followersCount']) &&
           (
@@ -51,7 +51,7 @@ service cloud.firestore {
 
         ||
 
-        // ③ Updating followingCount (+1 on follow, -1 on unfollow or removal).
+        // 3 Updating followingCount (+1 on follow, -1 on unfollow or removal).
         (
           changedKeys().hasOnly(['followingCount']) &&
           (
@@ -76,7 +76,7 @@ service cloud.firestore {
       // ── following sub-collection ─────────────────────────────────────────────
       match /following/{followingId} {
         allow read:  if isSignedIn();
-        // The account owner can manage their following list, OR the followed user can remove their entry when removing a follower.
+        // The account owner can manage their following list.
         allow write: if isSignedIn() && (isOwner(userId) || isOwner(followingId));
       }
 
@@ -88,15 +88,13 @@ service cloud.firestore {
           resource.data.senderId == request.auth.uid
         );
 
-        // Any signed-in user may create a notification for another user
-        // (triggered by likes, comments, follows).
-        // Self-notification is prevented in application code.
+        // Any signed-in user may create a notification for another user.
         allow create: if isSignedIn();
 
         // Only the owner may update (mark as read).
         allow update: if isSignedIn() && isOwner(userId);
 
-        // Owner can delete their notifications, or sender when cleaning up on account deletion.
+        // Owner or sender can delete.
         allow delete: if isSignedIn() && (
           isOwner(userId) ||
           resource.data.senderId == request.auth.uid
@@ -183,9 +181,7 @@ service cloud.firestore {
                          (conversationId.matches('.*' + request.auth.uid + '.*') ||
                           request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants);
         allow update: if isSignedIn() && (
-                         // Sender can edit or soft-delete
                          resource.data.senderId == request.auth.uid ||
-                         // Any participant can mark as seen or delete-for-me
                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenBy', 'deletedFor'])
                        );
         allow delete: if isSignedIn() &&
@@ -198,53 +194,29 @@ service cloud.firestore {
 
     // ── Public Portfolios ──────────────────────────────────────────────────────
     match /public_portfolios/{portfolioId} {
-      // 1. Public reading is allowed for everyone (unauthenticated web guests & app users).
+      // Anyone can read public portfolios (web guests + app users).
       allow read: if true;
 
-      // 2. Ownership verification:
-      // Case A: The portfolioId equals the authenticated user's UID.
-      function isOwnerByUid() {
-        return request.auth.uid == portfolioId;
-      }
-
-      // Case B: The portfolioId equals the user's username or profileSlug in /users/{request.auth.uid}.
-      function isOwnerByUsername() {
-        let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
-        return exists(userDocPath) && (
-          get(userDocPath).data.get('username', '') == portfolioId ||
-          (
-            get(userDocPath).data.get('username', '') is string &&
-            get(userDocPath).data.get('username', '').lower() == portfolioId.lower()
-          ) ||
-          get(userDocPath).data.get('profileSlug', '') == portfolioId ||
-          (
-            get(userDocPath).data.get('profileSlug', '') is string &&
-            get(userDocPath).data.get('profileSlug', '').lower() == portfolioId.lower()
-          )
-        );
-      }
-
-      function isPortfolioOwner() {
-        return isOwnerByUid() || isOwnerByUsername();
-      }
-
-      // 3. User may ONLY create a public portfolio document for their own UID or registered username.
+      // A user may create a portfolio document for themselves as long as the
+      // stored uid field matches their authenticated uid.
+      // The document ID (username-slug, name-slug, or uid-based) is chosen by
+      // the application layer and must NOT be gated server-side, since many
+      // users have name-derived slugs (e.g. "john-doe") that differ from their
+      // uid and may not yet have a username set.
       allow create: if isSignedIn() &&
-                       request.resource.data.uid == request.auth.uid &&
-                       isPortfolioOwner();
+                       request.resource.data.uid == request.auth.uid;
 
-      // 4. User may ONLY update their own existing public portfolio document.
+      // Users may only update their own existing portfolio document.
       allow update: if isSignedIn() &&
                        resource.data.uid == request.auth.uid &&
-                       request.resource.data.uid == request.auth.uid &&
-                       isPortfolioOwner();
+                       request.resource.data.uid == request.auth.uid;
 
-      // 5. User may ONLY delete their own portfolio document.
+      // Users may only delete their own portfolio document.
       allow delete: if isSignedIn() &&
                        resource.data.uid == request.auth.uid;
     }
 
-    // ── Collection Group Rules (required for collectionGroup queries) ────────
+    // ── Collection Group Rules ────────────────────────────────────────────────
     match /{path=**}/comments/{commentId} {
       allow read: if isSignedIn();
       allow delete: if isSignedIn() && (

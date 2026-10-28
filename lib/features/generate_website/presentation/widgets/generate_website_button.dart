@@ -6,6 +6,7 @@ import 'package:connecthub/core/config/portfolio_config.dart';
 import 'package:connecthub/features/profile/data/models/user_model.dart';
 import '../cubit/generate_website_cubit.dart';
 import '../cubit/generate_website_state.dart';
+import 'generate_website_button_visual.dart';
 
 /// Luxury Gold Gradient button to generate and publish or view a permanent public portfolio website.
 /// Supports both Owner and Visitor modes:
@@ -17,6 +18,7 @@ class GenerateWebsiteButton extends StatelessWidget {
   final UserModel user;
   final bool isOwner;
   final bool compact;
+  final bool isUpdate;
   final VoidCallback? onWebsiteGenerated;
 
   const GenerateWebsiteButton({
@@ -24,6 +26,7 @@ class GenerateWebsiteButton extends StatelessWidget {
     required this.user,
     this.isOwner = true,
     this.compact = true,
+    this.isUpdate = false,
     this.onWebsiteGenerated,
   });
 
@@ -35,6 +38,7 @@ class GenerateWebsiteButton extends StatelessWidget {
         user: user,
         isOwner: isOwner,
         compact: compact,
+        isUpdate: isUpdate,
         onWebsiteGenerated: onWebsiteGenerated,
       ),
     );
@@ -45,12 +49,14 @@ class _GenerateWebsiteButtonContent extends StatefulWidget {
   final UserModel user;
   final bool isOwner;
   final bool compact;
+  final bool isUpdate;
   final VoidCallback? onWebsiteGenerated;
 
   const _GenerateWebsiteButtonContent({
     required this.user,
     required this.isOwner,
     required this.compact,
+    this.isUpdate = false,
     this.onWebsiteGenerated,
   });
 
@@ -64,10 +70,6 @@ class _GenerateWebsiteButtonContentState
   bool? _localWebsiteGenerated;
   String? _localWebsiteUrl;
   bool _portfolioDocExists = false;
-
-  static const Color _goldPrimary = Color(0xFFD4AF37);
-  static const Color _goldLight = Color(0xFFF4D06F);
-  static const Color _darkBg = Color(0xFF090909);
 
   @override
   void initState() {
@@ -196,7 +198,9 @@ class _GenerateWebsiteButtonContentState
       return;
     }
 
-    final uri = Uri.tryParse(url);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final cacheBustUrl = url.contains('?') ? '$url&t=$timestamp' : '$url?t=$timestamp';
+    final uri = Uri.tryParse(cacheBustUrl) ?? Uri.tryParse(url);
     if (uri == null || !uri.hasScheme) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -240,14 +244,14 @@ class _GenerateWebsiteButtonContentState
   }
 
   void _onPressed(BuildContext context) {
-    if (_isGenerated) {
+    if (widget.isUpdate) {
+      final cubit = context.read<GenerateWebsiteCubit>();
+      cubit.generateWebsite(uid: widget.user.uid);
+    } else if (_isGenerated) {
       _openWebsite(context);
     } else if (widget.isOwner) {
       final cubit = context.read<GenerateWebsiteCubit>();
-      cubit.generateWebsite(
-        uid: widget.user.uid,
-        cachedUser: widget.user,
-      );
+      cubit.generateWebsite(uid: widget.user.uid);
     }
   }
 
@@ -267,13 +271,15 @@ class _GenerateWebsiteButtonContentState
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded,
+                  const Icon(Icons.check_circle_rounded,
                       color: Colors.white, size: 20),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Text('Portfolio website generated successfully.'),
+                    child: Text(widget.isUpdate
+                        ? 'Portfolio website updated successfully.'
+                        : 'Portfolio website generated successfully.'),
                   ),
                 ],
               ),
@@ -295,7 +301,7 @@ class _GenerateWebsiteButtonContentState
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                        'Failed to generate website: ${state.message}'),
+                        'Failed to ${widget.isUpdate ? "update" : "generate"} website: ${state.message}'),
                   ),
                 ],
               ),
@@ -316,7 +322,9 @@ class _GenerateWebsiteButtonContentState
         // Determine label according to Owner vs Visitor & generation status
         final String buttonLabel;
         if (isLoading) {
-          buttonLabel = 'Generating...';
+          buttonLabel = widget.isUpdate ? 'Updating Website...' : 'Generating...';
+        } else if (widget.isUpdate) {
+          buttonLabel = 'Update Website';
         } else if (!widget.isOwner) {
           buttonLabel = 'Website';
         } else if (_isGenerated) {
@@ -325,130 +333,11 @@ class _GenerateWebsiteButtonContentState
           buttonLabel = 'Generate Website';
         }
 
-        if (widget.compact) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: isLoading ? null : () => _onPressed(context),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [_goldLight, _goldPrimary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _goldPrimary.withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isLoading)
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(_darkBg),
-                          ),
-                        )
-                      else
-                        const Icon(
-                          Icons.public_rounded,
-                          size: 15,
-                          color: _darkBg,
-                        ),
-                      const SizedBox(width: 6),
-                      Text(
-                        buttonLabel,
-                        style: const TextStyle(
-                          color: _darkBg,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
-        // Full width variant
-        return Container(
-          width: double.infinity,
-          height: 48,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [_goldLight, _goldPrimary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: _goldPrimary.withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ElevatedButton(
-            onPressed: isLoading ? null : () => _onPressed(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isLoading)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(_darkBg),
-                    ),
-                  )
-                else
-                  const Icon(
-                    Icons.public_rounded,
-                    color: _darkBg,
-                    size: 20,
-                  ),
-                const SizedBox(width: 10),
-                Text(
-                  isLoading
-                      ? 'Generating Portfolio Website...'
-                      : buttonLabel,
-                  style: const TextStyle(
-                    color: _darkBg,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return GenerateWebsiteButtonVisual(
+          compact: widget.compact,
+          isLoading: isLoading,
+          buttonLabel: buttonLabel,
+          onPressed: isLoading ? null : () => _onPressed(context),
         );
       },
     );

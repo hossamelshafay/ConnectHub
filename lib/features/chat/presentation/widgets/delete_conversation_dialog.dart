@@ -33,14 +33,14 @@ class DeleteConversationDialog extends StatelessWidget {
                     color: AppColors.error.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.delete_sweep_rounded,
                     color: AppColors.error,
                     size: 22,
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Delete Chat?',
                     style: TextStyle(
@@ -81,7 +81,7 @@ class DeleteConversationDialog extends StatelessWidget {
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.divider),
+                    side: BorderSide(color: AppColors.divider),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -97,7 +97,7 @@ class DeleteConversationDialog extends StatelessWidget {
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
+                  child: Text(
                     'Cancel',
                     style: TextStyle(
                       color: AppColors.textHint,

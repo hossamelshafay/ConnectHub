@@ -71,7 +71,7 @@ class UserSearchTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
               color: AppColors.textHint,
               size: 20,

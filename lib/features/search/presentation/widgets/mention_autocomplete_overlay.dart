@@ -177,9 +177,9 @@ class _MentionAutocompleteOverlayState
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
         border: Border.all(
@@ -190,8 +190,8 @@ class _MentionAutocompleteOverlayState
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: _isLoading && _suggestions.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.all(16),
+            ? Padding(
+                padding: const EdgeInsets.all(16),
                 child: Center(
                   child: SizedBox(
                     width: 20,
@@ -208,7 +208,7 @@ class _MentionAutocompleteOverlayState
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 itemCount: _suggestions.length,
                 separatorBuilder: (_, _) =>
-                    const Divider(height: 1, color: AppColors.divider),
+                    Divider(height: 1, color: AppColors.divider),
                 itemBuilder: (context, index) {
                   final user = _suggestions[index];
                   final name = user['name'] as String? ?? 'User';
@@ -271,7 +271,7 @@ class _MentionAutocompleteOverlayState
                               ],
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.north_west_rounded,
                             size: 16,
                             color: AppColors.textHint,

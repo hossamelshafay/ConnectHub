@@ -7,6 +7,7 @@ import 'package:connecthub/core/services/image_bb_service.dart';
 import 'package:connecthub/core/services/portfolio_sync_service.dart';
 import 'package:connecthub/features/auth/data/repos/auth_repo_imp.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
+import 'package:connecthub/features/profile/data/models/user_model.dart';
 import 'package:connecthub/features/profile/data/repos/profile_repo.dart';
 
 class ProfileRepoImp implements ProfileRepo {
@@ -64,6 +65,10 @@ class ProfileRepoImp implements ProfileRepo {
     required String name,
     required String username,
     required String bio,
+    String? headline,
+    String? location,
+    String? cvLink,
+    SocialLinksModel? socialLinks,
     String? profileImageUrl,
   }) async {
     final user = _auth.currentUser;
@@ -79,21 +84,49 @@ class ProfileRepoImp implements ProfileRepo {
       'bio': bio.trim(),
     };
 
-    if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-      updates['profileImage'] = profileImageUrl;
-      await user.updatePhotoURL(profileImageUrl);
+    if (headline != null) {
+      updates['headline'] = headline.trim();
+    }
+    if (location != null) {
+      updates['location'] = location.trim();
+    }
+    if (cvLink != null) {
+      final trimmed = cvLink.trim();
+      updates['cvLink'] = trimmed;
+      updates['resumeUrl'] = trimmed;
+    }
+    if (socialLinks != null) {
+      updates['socialLinks'] = socialLinks.toMap();
     }
 
-    await user.updateDisplayName(name.trim());
-    await user.reload();
+    final tasks = <Future<void>>[];
 
-    await _users.doc(user.uid).set(updates, SetOptions(merge: true));
+    if (profileImageUrl != null) {
+      if (profileImageUrl.isNotEmpty) {
+        updates['profileImage'] = profileImageUrl;
+        if (profileImageUrl != user.photoURL) {
+          tasks.add(user.updatePhotoURL(profileImageUrl));
+        }
+      } else {
+        updates['profileImage'] = '';
+        if (user.photoURL != null && user.photoURL!.isNotEmpty) {
+          tasks.add(user.updatePhotoURL(null));
+        }
+      }
+    }
 
+    if (name.trim() != (user.displayName ?? '')) {
+      tasks.add(user.updateDisplayName(name.trim()));
+    }
+
+    // Run Firestore document merge in parallel with Auth profile updates
+    tasks.add(_users.doc(user.uid).set(updates, SetOptions(merge: true)));
+
+    await Future.wait(tasks);
+
+    // Non-blocking background syncs
     PortfolioSyncService().syncUserPortfolio(user.uid).ignore();
-
-    try {
-      await AuthRepoImp().syncCurrentAccountToSaved();
-    } catch (_) {}
+    AuthRepoImp().syncCurrentAccountToSaved().ignore();
   }
 
   @override

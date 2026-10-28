@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connecthub/core/theme/theme_cubit.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/profile/data/models/user_model.dart';
 import 'package:connecthub/features/profile/presentation/views/personal_profile_view.dart';
 import 'package:connecthub/features/portfolio/presentation/views/portfolio_view.dart';
@@ -82,27 +85,42 @@ class _ProfileRouterState extends State<ProfileRouter> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.userId.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('Invalid user.')),
-      );
-    }
-
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
-    final isMe = currentUid != null && currentUid == widget.userId;
-
-    return StreamBuilder<DocumentSnapshot>(
-      stream: _userStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
+    return BlocBuilder<ThemeCubit, ThemeMode>(
+      builder: (context, themeMode) {
+        if (widget.userId.isEmpty) {
           return const Scaffold(
-            backgroundColor: Color(0xFF0F172A),
-            body: Center(
-              child: CircularProgressIndicator(color: Color(0xFF38BDF8)),
-            ),
+            body: Center(child: Text('Invalid user.')),
           );
         }
+
+        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+        final isMe = currentUid != null && currentUid == widget.userId;
+
+        return StreamBuilder<DocumentSnapshot>(
+          stream: _userStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData) {
+              return Scaffold(
+                backgroundColor: AppColors.background,
+                appBar: AppBar(
+                  backgroundColor: AppColors.background,
+                  elevation: 0,
+                  leading: widget.showBackButton
+                      ? Center(
+                          child: AppIconButton(
+                            icon: Icons.arrow_back_ios_new,
+                            size: 18,
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        )
+                      : null,
+                ),
+                body: const SafeArea(
+                  child: ProfileHeaderShimmer(includePosts: true),
+                ),
+              );
+            }
 
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return Scaffold(
@@ -114,7 +132,7 @@ class _ProfileRouterState extends State<ProfileRouter> {
                     )
                   : null,
             ),
-            body: const Center(
+            body: Center(
               child: Text(
                 'User not found.',
                 style: AppTextStyles.body2,
@@ -180,6 +198,8 @@ class _ProfileRouterState extends State<ProfileRouter> {
           },
           child: activeWidget,
         );
+      },
+    );
       },
     );
   }

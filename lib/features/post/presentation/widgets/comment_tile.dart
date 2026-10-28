@@ -33,8 +33,9 @@ class CommentTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +83,7 @@ class CommentTile extends StatelessWidget {
               ),
               if (lastEditedAt != null) ...[
                 const SizedBox(width: 4),
-                const Text('•', style: AppTextStyles.caption),
+                Text('•', style: AppTextStyles.caption),
                 const SizedBox(width: 4),
                 Text(
                   'Edited',
@@ -94,7 +95,7 @@ class CommentTile extends StatelessWidget {
                 const SizedBox(width: 4),
                 PopupMenuButton<String>(
                   enabled: !isProcessing,
-                  icon: const Icon(Icons.more_vert,
+                  icon: Icon(Icons.more_vert,
                       color: AppColors.textSecondary, size: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -109,25 +110,25 @@ class CommentTile extends StatelessWidget {
                   },
                   itemBuilder: (context) => [
                     if (onEdit != null)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'edit',
                         child: Row(
                           children: [
                             Icon(Icons.edit_outlined,
                                 size: 18, color: AppColors.textPrimary),
-                            SizedBox(width: 10),
-                            Text('Edit Comment'),
+                            const SizedBox(width: 10),
+                            const Text('Edit Comment'),
                           ],
                         ),
                       ),
                     if (onDelete != null)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'delete',
                         child: Row(
                           children: [
                             Icon(Icons.delete_outline,
                                 size: 18, color: AppColors.error),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             Text('Delete Comment',
                                 style: TextStyle(color: AppColors.error)),
                           ],

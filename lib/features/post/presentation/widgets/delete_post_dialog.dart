@@ -35,7 +35,7 @@ class DeletePostDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
+      title: Text(
         'Delete this post?',
         style: TextStyle(
           color: AppColors.textPrimary,
@@ -68,7 +68,7 @@ class DeletePostDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          const Text(
+          Text(
             'This action cannot be undone. All comments and likes on this post will also be deleted.',
             style: AppTextStyles.caption,
           ),
@@ -77,7 +77,7 @@ class DeletePostDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(
+          child: Text(
             'Cancel',
             style: TextStyle(color: AppColors.textSecondary),
           ),

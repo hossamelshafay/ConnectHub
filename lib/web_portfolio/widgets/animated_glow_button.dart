@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../theme/web_colors.dart';
-import '../theme/web_text_styles.dart';
-import '../animations/gold_shimmer.dart';
 
 /// Luxury gold CTA button with shimmer sweep and hover elevation.
 class AnimatedGlowButton extends StatefulWidget {
@@ -48,41 +46,46 @@ class _AnimatedGlowButtonState extends State<AnimatedGlowButton> {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
           decoration: BoxDecoration(
-            gradient: WebColors.primaryGradient,
-            borderRadius: BorderRadius.circular(8),
+            color: widget.isDark ? WebColors.darkPrimary : WebColors.lightPrimary,
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: WebColors.primary.withValues(alpha: _isHovered ? 0.40 : 0.20),
-                blurRadius: _isHovered ? 24 : 10,
-                offset: Offset(0, _isHovered ? 8 : 3),
+                color: (widget.isDark ? WebColors.darkPrimary : WebColors.lightPrimary)
+                    .withValues(alpha: _isHovered ? 0.38 : 0.20),
+                blurRadius: _isHovered ? 20 : 10,
+                offset: Offset(0, _isHovered ? 6 : 3),
               ),
             ],
           ),
-          child: GoldShimmerSurface(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.label,
-                  style: WebTextStyles.buttonText(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: widget.isDark ? const Color(0xFF141210) : Colors.white,
+                  letterSpacing: -0.2,
                 ),
-                if (widget.icon != null) ...[
-                  const SizedBox(width: 8),
-                  Icon(
-                    widget.icon,
-                    size: 16,
-                    color: WebColors.textDark,
-                  ),
-                ],
+              ),
+              if (widget.icon != null) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  widget.icon,
+                  size: 16,
+                  color: widget.isDark ? const Color(0xFF141210) : Colors.white,
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// Secondary button: transparent with gold border; fills on hover.
+  /// Secondary button: transparent with warm border; fills on hover.
   Widget _buildSecondaryButton() {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -96,12 +99,14 @@ class _AnimatedGlowButtonState extends State<AnimatedGlowButton> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
           decoration: BoxDecoration(
             color: _isHovered
-                ? WebColors.primary.withValues(alpha: 0.10)
+                ? (widget.isDark ? WebColors.darkPrimary : WebColors.lightPrimary).withValues(alpha: 0.14)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isHovered ? WebColors.primaryLight : WebColors.border,
-              width: 1,
+              color: _isHovered
+                  ? (widget.isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary)
+                  : (widget.isDark ? WebColors.darkPrimary.withValues(alpha: 0.35) : WebColors.lightBorder),
+              width: 1.2,
             ),
           ),
           child: Row(
@@ -109,10 +114,13 @@ class _AnimatedGlowButtonState extends State<AnimatedGlowButton> {
             children: [
               Text(
                 widget.label,
-                style: WebTextStyles.buttonText().copyWith(
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: _isHovered
-                      ? WebColors.primaryLight
-                      : WebColors.textSecondary,
+                      ? (widget.isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary)
+                      : (widget.isDark ? WebColors.darkTextPrimary : WebColors.lightTextSecondary),
                 ),
               ),
               if (widget.icon != null) ...[
@@ -121,8 +129,8 @@ class _AnimatedGlowButtonState extends State<AnimatedGlowButton> {
                   widget.icon,
                   size: 16,
                   color: _isHovered
-                      ? WebColors.primaryLight
-                      : WebColors.textSecondary,
+                      ? (widget.isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary)
+                      : (widget.isDark ? WebColors.darkTextPrimary : WebColors.lightTextSecondary),
                 ),
               ],
             ],

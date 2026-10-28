@@ -1,26 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/core/utils/mention_helper.dart';
-import 'package:connecthub/core/utils/mention_text.dart';
 import 'package:connecthub/features/notification/data/models/notification_model.dart';
 import 'package:connecthub/features/notification/data/repos/notification_repo_imp.dart';
 import 'package:connecthub/features/post/data/repos/post_repo.dart';
 import 'package:connecthub/features/post/data/repos/post_repo_imp.dart';
-import 'package:connecthub/features/post/presentation/widgets/comment_tile.dart';
-import 'package:connecthub/features/post/presentation/widgets/liked_by_sheet.dart';
-import 'package:connecthub/features/search/presentation/widgets/mention_autocomplete_overlay.dart';
-import 'package:connecthub/core/utils/profile_navigation_helper.dart';
-import 'package:connecthub/features/post/presentation/views/edit_post_view.dart';
-import 'package:connecthub/features/post/presentation/widgets/delete_post_dialog.dart';
 import 'package:connecthub/features/post/presentation/widgets/delete_comment_dialog.dart';
-import 'package:connecthub/features/post/presentation/manager/cubit/post_action_cubit.dart';
-import 'package:connecthub/features/home/data/models/post_model.dart';
-import 'package:connecthub/features/chat/presentation/widgets/share_post_sheet.dart';
+import 'package:connecthub/features/post/presentation/widgets/post_details_header.dart';
+import 'package:connecthub/features/post/presentation/widgets/post_details_content.dart';
+import 'package:connecthub/features/post/presentation/widgets/post_details_actions_bar.dart';
+import 'package:connecthub/features/post/presentation/widgets/post_details_comments_section.dart';
+import 'package:connecthub/features/post/presentation/widgets/post_comment_input_bar.dart';
+import 'package:connecthub/features/post/presentation/widgets/post_details_status_views.dart';
 
 class PostDetailsView extends StatefulWidget {
   final String postId;
@@ -47,6 +41,14 @@ class _PostDetailsViewState extends State<PostDetailsView> {
   bool? _optimisticLiked;
   int? _optimisticLikeCount;
 
+  @override
+  void dispose() {
+    _commentController.dispose();
+    _scrollController.dispose();
+    _commentFocusNode.dispose();
+    super.dispose();
+  }
+
   void _handleToggleLike(
     String currentUserId,
     List<String> serverLikes,
@@ -58,30 +60,18 @@ class _PostDetailsViewState extends State<PostDetailsView> {
           content: const Text('Please log in to like posts.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
     }
-    final currentlyLiked =
-        _optimisticLiked ?? serverLikes.contains(currentUserId);
+    final currentlyLiked = _optimisticLiked ?? serverLikes.contains(currentUserId);
     final count = _optimisticLikeCount ?? serverCount;
     setState(() {
       _optimisticLiked = !currentlyLiked;
-      _optimisticLikeCount =
-          (_optimisticLiked! ? count + 1 : count - 1).clamp(0, 999999);
+      _optimisticLikeCount = (_optimisticLiked! ? count + 1 : count - 1).clamp(0, 999999);
     });
     widget.postRepo.toggleLike(widget.postId, currentUserId);
-  }
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    _scrollController.dispose();
-    _commentFocusNode.dispose();
-    super.dispose();
   }
 
   void _startEditingComment(String commentId, String commentText) {
@@ -135,9 +125,7 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                 content: const Text('Comment deleted successfully!'),
                 backgroundColor: AppColors.success,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             );
           }
@@ -148,9 +136,7 @@ class _PostDetailsViewState extends State<PostDetailsView> {
                 content: Text(e.toString().replaceFirst('Exception: ', '')),
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             );
           }
@@ -163,1010 +149,285 @@ class _PostDetailsViewState extends State<PostDetailsView> {
     );
   }
 
+  Future<void> _handleCommentSubmit() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final text = _commentController.text.trim();
+    if (text.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Comment cannot be empty.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    if (_editingCommentId != null) {
+      // Editing comment mode
+      if (text == _editingCommentOriginalText) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('No changes were made.'),
+            backgroundColor: AppColors.textSecondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
+
+      setState(() => _isProcessing = true);
+      try {
+        await widget.postRepo.updateComment(
+          postId: widget.postId,
+          commentId: _editingCommentId!,
+          text: text,
+          oldText: _editingCommentOriginalText,
+        );
+        _cancelEditingComment();
+        if (mounted) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: const Text('Comment updated successfully!'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      } catch (e) {
+        final message = e.toString().replaceFirst('Exception: ', '');
+        if (message.contains('no longer exists')) {
+          _cancelEditingComment();
+        }
+        if (mounted) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isProcessing = false);
+        }
+      }
+    } else {
+      // New comment mode
+      setState(() => _isSendingComment = true);
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        String commenterName = (user?.displayName ?? '').trim();
+        if (commenterName.isEmpty && user != null) {
+          try {
+            final senderDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+            final sData = senderDoc.data() ?? {};
+            commenterName = (sData['name'] as String? ?? sData['username'] as String? ?? '').trim();
+          } catch (_) {}
+        }
+        if (commenterName.isEmpty) {
+          commenterName = 'User';
+        }
+
+        final commentId = await widget.postRepo.addComment(
+          widget.postId,
+          {
+            'userId': user?.uid ?? '',
+            'userName': commenterName,
+            'text': text,
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+        );
+
+        // Fire mention notifications
+        MentionHelper.sendMentionNotifications(
+          text: text,
+          postId: widget.postId,
+          commentId: commentId,
+        );
+
+        // Fire comment notification (not to self)
+        final postDoc = await FirebaseFirestore.instance.collection('posts').doc(widget.postId).get();
+        final Map<String, dynamic> postData = postDoc.data() ?? {};
+        final targetPostOwnerId = postData['userId'] as String? ?? '';
+        if (user != null && user.uid != targetPostOwnerId && targetPostOwnerId.isNotEmpty) {
+          try {
+            final senderDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+            final Map<String, dynamic> senderData = senderDoc.data() ?? {};
+            await NotificationRepoImp().createNotification(
+              NotificationModel(
+                id: '',
+                senderId: user.uid,
+                senderName: senderData['name'] as String? ?? user.displayName ?? 'Someone',
+                senderUsername: senderData['username'] as String? ?? '',
+                senderPhoto: senderData['profileImage'] as String?,
+                receiverId: targetPostOwnerId,
+                type: NotificationType.comment,
+                postId: widget.postId,
+                commentId: commentId,
+                createdAt: DateTime.now(),
+                isRead: false,
+              ),
+            );
+          } catch (_) {}
+        }
+
+        _commentController.clear();
+      } catch (e) {
+        if (mounted) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isSendingComment = false);
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new,
-                          size: 18, color: AppColors.textPrimary),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text('Post Details', style: AppTextStyles.headline2),
-                ],
-              ),
-            ),
-            Expanded(
-              child: StreamBuilder<DocumentSnapshot>(
-                stream: widget.postRepo.getPostStream(widget.postId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.cloud_off_rounded,
-                                size: 48, color: AppColors.error),
-                            const SizedBox(height: 16),
-                            Text('Failed to load post',
-                                style: AppTextStyles.headline3),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${snapshot.error}'.replaceFirst('Exception: ', ''),
-                              style: AppTextStyles.body2
-                                  .copyWith(color: AppColors.textSecondary),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: () => setState(() {}),
-                              icon: const Icon(Icons.refresh_rounded, size: 18),
-                              label: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData || !snapshot.data!.exists) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.article_outlined,
-                                size: 48, color: AppColors.textHint),
-                            const SizedBox(height: 12),
-                            const Text('Post not found.',
-                                style: AppTextStyles.body1),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Go Back'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  final data =
-                      snapshot.data!.data() as Map<String, dynamic>;
-                  final postOwnerId = data['userId'] as String? ?? '';
-                  final serverLikes = List<String>.from(data['likes'] ?? []);
-                  final serverLikeCount =
-                      (data['likeCount'] as num?)?.toInt() ?? serverLikes.length;
-
-                  // Clear optimistic state when server state matches
-                  if (_optimisticLiked != null &&
-                      serverLikes.contains(currentUserId) == _optimisticLiked) {
-                    _optimisticLiked = null;
-                    _optimisticLikeCount = null;
-                  }
-
-                  final isLiked =
-                      _optimisticLiked ?? serverLikes.contains(currentUserId);
-                  final likeCount = _optimisticLikeCount ?? serverLikeCount;
-                  final createdAt =
-                      (data['createdAt'] as Timestamp?)?.toDate() ??
-                          DateTime.now();
-
-                  return StreamBuilder<QuerySnapshot>(
-                    stream: widget.postRepo.getCommentsStream(widget.postId),
-                    builder: (context, commSnap) {
-                      final commentCount = commSnap.hasData
-                          ? commSnap.data!.docs.length
-                          : ((data['commentCount'] as num?)?.toInt() ?? 0);
-
-                      return SingleChildScrollView(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () {
-                                      final postOwnerId =
-                                          data['userId'] as String? ?? '';
-                                      final postOwnerName =
-                                          data['userName'] as String? ?? 'Unknown';
-                                      if (postOwnerId.isNotEmpty) {
-                                        ProfileNavigationHelper.openUserProfile(
-                                          context,
-                                          userId: postOwnerId,
-                                          userName: postOwnerName,
-                                        );
-                                      }
-                                    },
-                                    child: Row(
-                                      children: [
-                                        UserAvatarById(
-                                          userId: postOwnerId,
-                                          fallbackName: data['userName'] ?? '',
-                                          size: 50,
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                data['userName'] ?? 'Unknown',
-                                                style: AppTextStyles.body1.copyWith(
-                                                    fontWeight: FontWeight.w600),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  Text(
-                                                    DateFormat(
-                                                            'MMM d, yyyy • h:mm a')
-                                                        .format(createdAt),
-                                                    style: AppTextStyles.caption,
-                                                  ),
-                                                  if (data['lastEditedAt'] !=
-                                                      null) ...[
-                                                    const SizedBox(width: 4),
-                                                    const Text('•',
-                                                        style:
-                                                            AppTextStyles.caption),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      'Edited',
-                                                      style: AppTextStyles.caption
-                                                          .copyWith(
-                                                        fontStyle: FontStyle.italic,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                if (data['userId'] == currentUserId)
-                                  PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert,
-                                        color: AppColors.textSecondary),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12)),
-                                    onSelected: (value) {
-                                      if (value == 'edit') {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => EditPostView(
-                                              postId: widget.postId,
-                                              initialTitle: data['title'] ?? '',
-                                              initialDescription:
-                                                  data['description'] ?? '',
-                                              initialImageUrl: data['imageUrl'],
-                                              initialDeleteHash: data['deleteHash'],
-                                            ),
-                                          ),
-                                        );
-                                      } else if (value == 'delete') {
-                                        DeletePostDialog.show(
-                                          context,
-                                          description: data['description'] ?? '',
-                                          onConfirm: () async {
-                                            final cubit = PostActionCubit();
-                                            try {
-                                              await cubit.deletePost(
-                                                postId: widget.postId,
-                                                deleteHash: data['deleteHash'],
-                                              );
-                                              if (context.mounted) {
-                                                Navigator.pop(
-                                                    context); // Pop PostDetailsView back to caller
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: const Text(
-                                                        'Post deleted successfully!'),
-                                                    backgroundColor:
-                                                        AppColors.success,
-                                                    behavior:
-                                                        SnackBarBehavior.floating,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(12),
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(e.toString()),
-                                                    backgroundColor:
-                                                        AppColors.error,
-                                                    behavior:
-                                                        SnackBarBehavior.floating,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(12),
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                        );
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.edit_outlined,
-                                                size: 20,
-                                                color: AppColors.textPrimary),
-                                            SizedBox(width: 12),
-                                            Text('Edit Post'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.delete_outline,
-                                                size: 20, color: AppColors.error),
-                                            SizedBox(width: 12),
-                                            Text('Delete Post',
-                                                style: TextStyle(
-                                                    color: AppColors.error)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            Text(data['title'] ?? '', style: AppTextStyles.headline1),
-                            const SizedBox(height: 12),
-                            MentionText(
-                              text: data['description'] ?? '',
-                              style: AppTextStyles.body1,
-                            ),
-                            if (data['imageUrl'] != null &&
-                                (data['imageUrl'] as String).isNotEmpty) ...[
-                              const SizedBox(height: 16),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: AspectRatio(
-                                  aspectRatio: 16 / 9,
-                                  child: CachedNetworkImage(
-                                    imageUrl: data['imageUrl'],
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    placeholder: (_, _) => Container(
-                                      color: AppColors.surfaceVariant,
-                                      child: const Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-                                    errorWidget: (_, _, _) => Container(
-                                      color: AppColors.surfaceVariant,
-                                      child: const Icon(Icons.broken_image_outlined,
-                                          color: AppColors.textHint, size: 40),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceVariant,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Row(
-                                children: [
-                                  GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () => _handleToggleLike(
-                                        currentUserId, serverLikes, serverLikeCount),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          isLiked
-                                              ? Icons.favorite
-                                              : Icons.favorite_border,
-                                          color: isLiked
-                                              ? AppColors.accent
-                                              : AppColors.textHint,
-                                          size: 24,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '$likeCount',
-                                          style: AppTextStyles.body1.copyWith(
-                                              fontWeight: FontWeight.w600),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () =>
-                                        _showLikedBySheet(context, serverLikes),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'Liked By',
-                                        style: AppTextStyles.body2.copyWith(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.chat_bubble_outline,
-                                          color: AppColors.textHint, size: 22),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '$commentCount',
-                                        style: AppTextStyles.body1.copyWith(
-                                            fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 16),
-                                  InkWell(
-                                    onTap: () {
-                                      final user =
-                                          FirebaseAuth.instance.currentUser;
-                                      if (user == null) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: const Text(
-                                                'Please log in to share posts.'),
-                                            backgroundColor: AppColors.error,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      final postObj =
-                                          PostModel.fromDoc(snapshot.data!);
-                                      SharePostSheet.show(
-                                        context,
-                                        post: postObj,
-                                        myUid: user.uid,
-                                        myName: (user.displayName != null &&
-                                                user.displayName!.trim().isNotEmpty)
-                                            ? user.displayName!.trim()
-                                            : 'User',
-                                      );
-                                    },
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 4, vertical: 4),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.share_outlined,
-                                              color: AppColors.textHint, size: 22),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Share',
-                                            style: TextStyle(
-                                              color: AppColors.textHint,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Text('Comments', style: AppTextStyles.headline3),
-                            const SizedBox(height: 12),
-                            if (commSnap.connectionState ==
-                                    ConnectionState.waiting &&
-                                !commSnap.hasData)
-                              const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(24),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              )
-                            else if (commSnap.hasError)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 24),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.error_outline_rounded,
-                                          size: 32, color: AppColors.error),
-                                      const SizedBox(height: 8),
-                                      const Text('Could not load comments.',
-                                          style: AppTextStyles.body2),
-                                      const SizedBox(height: 12),
-                                      TextButton.icon(
-                                        onPressed: () => setState(() {}),
-                                        icon: const Icon(Icons.refresh_rounded,
-                                            size: 16),
-                                        label: const Text('Retry'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else if (commSnap.data == null ||
-                                commSnap.data!.docs.isEmpty)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 36),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: const BoxDecoration(
-                                          color: AppColors.surfaceVariant,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.chat_bubble_outline_rounded,
-                                          color: AppColors.textHint,
-                                          size: 32,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'No comments yet',
-                                        style: AppTextStyles.body1.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Be the first to share your thoughts!',
-                                        style: AppTextStyles.caption
-                                            .copyWith(color: AppColors.textHint),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else ...[
-                              Builder(
-                                builder: (context) {
-                                  final sortedComments =
-                                      List<QueryDocumentSnapshot>.from(
-                                          commSnap.data!.docs);
-                                  sortedComments.sort((a, b) {
-                                    final aData =
-                                        a.data() as Map<String, dynamic>? ?? {};
-                                    final bData =
-                                        b.data() as Map<String, dynamic>? ?? {};
-                                    final aDate = (aData['createdAt']
-                                                as Timestamp?)
-                                            ?.toDate() ??
-                                        DateTime.now();
-                                    final bDate = (bData['createdAt']
-                                                as Timestamp?)
-                                            ?.toDate() ??
-                                        DateTime.now();
-                                    return aDate.compareTo(bDate);
-                                  });
-
-                                  return ListView.separated(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    itemCount: sortedComments.length,
-                                    separatorBuilder: (_, _) =>
-                                        const SizedBox(height: 12),
-                                    itemBuilder: (context, index) {
-                                      final commentDoc = sortedComments[index];
-                                      final commentId = commentDoc.id;
-                                      final comm = commentDoc.data()
-                                          as Map<String, dynamic>;
-                                      final commentUserId =
-                                          comm['userId'] as String? ?? '';
-                                      final commentText =
-                                          comm['text'] as String? ?? '';
-                                      final commentCreatedAt =
-                                          (comm['createdAt'] as Timestamp?)
-                                                  ?.toDate() ??
-                                              DateTime.now();
-                                      final commentLastEditedAt =
-                                          (comm['lastEditedAt'] as Timestamp?)
-                                              ?.toDate();
-
-                                      final isCommentOwner =
-                                          currentUserId.isNotEmpty &&
-                                              commentUserId == currentUserId;
-                                      final isPostOwner =
-                                          currentUserId.isNotEmpty &&
-                                              postOwnerId == currentUserId;
-
-                                      final canEdit = isCommentOwner;
-                                      final canDelete =
-                                          isCommentOwner || isPostOwner;
-
-                                      return CommentTile(
-                                        commentId: commentId,
-                                        userId: commentUserId,
-                                        userName: comm['userName'] ?? 'User',
-                                        text: commentText,
-                                        createdAt: commentCreatedAt,
-                                        lastEditedAt: commentLastEditedAt,
-                                        onEdit: canEdit
-                                            ? () => _startEditingComment(
-                                                commentId, commentText)
-                                            : null,
-                                        onDelete: canDelete
-                                            ? () =>
-                                                _confirmDeleteComment(commentId)
-                                            : null,
-                                        isProcessing: _isProcessing,
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
-                            const SizedBox(height: 80),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-
-            ),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -3),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_editingCommentId != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          border: Border(
-                            bottom: BorderSide(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.2),
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.edit,
-                                size: 16, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Editing comment',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: _cancelEditingComment,
-                              child: const Icon(Icons.close,
-                                  size: 18, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: MentionAutocompleteOverlay(
-                              controller: _commentController,
-                              showAbove: true,
-                              child: TextField(
-                                controller: _commentController,
-                                focusNode: _commentFocusNode,
-                                style: AppTextStyles.body1,
-                                decoration: InputDecoration(
-                                  hintText: _editingCommentId != null
-                                      ? 'Edit your comment...'
-                                      : 'Write a comment... (use @ to mention)',
-                                  hintStyle: AppTextStyles.body2
-                                      .copyWith(color: AppColors.textHint),
-                                  filled: true,
-                                  fillColor: AppColors.surfaceVariant,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 14),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          GestureDetector(
-                            onTap: (_isSendingComment || _isProcessing)
-                                ? null
-                                : () async {
-                                    final messenger =
-                                        ScaffoldMessenger.of(context);
-                                    final text =
-                                        _commentController.text.trim();
-                                    if (text.isEmpty) {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: const Text(
-                                              'Comment cannot be empty.'),
-                                          backgroundColor: AppColors.error,
-                                          behavior:
-                                              SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    if (_editingCommentId != null) {
-                                      // Editing comment mode
-                                      if (text ==
-                                          _editingCommentOriginalText) {
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: const Text(
-                                                'No changes were made.'),
-                                            backgroundColor:
-                                                AppColors.textSecondary,
-                                            behavior:
-                                                SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-
-                                      setState(() => _isProcessing = true);
-                                      try {
-                                        await widget.postRepo.updateComment(
-                                          postId: widget.postId,
-                                          commentId: _editingCommentId!,
-                                          text: text,
-                                          oldText:
-                                              _editingCommentOriginalText,
-                                        );
-                                        _cancelEditingComment();
-                                        if (mounted) {
-                                          messenger.showSnackBar(
-                                            SnackBar(
-                                              content: const Text(
-                                                  'Comment updated successfully!'),
-                                              backgroundColor:
-                                                  AppColors.success,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        12),
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      } catch (e) {
-                                        final message = e
-                                            .toString()
-                                            .replaceFirst(
-                                                'Exception: ', '');
-                                        if (message.contains(
-                                            'no longer exists')) {
-                                          _cancelEditingComment();
-                                        }
-                                        if (mounted) {
-                                          messenger.showSnackBar(
-                                            SnackBar(
-                                              content: Text(message),
-                                              backgroundColor:
-                                                  AppColors.error,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        12),
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      } finally {
-                                        if (mounted) {
-                                          setState(() =>
-                                              _isProcessing = false);
-                                        }
-                                      }
-                                    } else {
-                                      // New comment mode
-                                      setState(
-                                          () => _isSendingComment = true);
-                                      try {
-                                        final user = FirebaseAuth
-                                            .instance.currentUser;
-                                        String commenterName =
-                                            (user?.displayName ?? '').trim();
-                                        if (commenterName.isEmpty && user != null) {
-                                          try {
-                                            final senderDoc =
-                                                await FirebaseFirestore
-                                                    .instance
-                                                    .collection('users')
-                                                    .doc(user.uid)
-                                                    .get();
-                                            final sData = senderDoc.data() ?? {};
-                                            commenterName = (sData['name']
-                                                        as String? ??
-                                                    sData['username']
-                                                        as String? ??
-                                                    '')
-                                                .trim();
-                                          } catch (_) {}
-                                        }
-                                        if (commenterName.isEmpty) {
-                                          commenterName = 'User';
-                                        }
-
-                                        final commentId = await widget
-                                            .postRepo
-                                            .addComment(
-                                          widget.postId,
-                                          {
-                                            'userId': user?.uid ?? '',
-                                            'userName': commenterName,
-                                            'text': text,
-                                            'createdAt':
-                                                FieldValue.serverTimestamp(),
-                                          },
-                                        );
-
-                                        // Fire mention notifications
-                                        MentionHelper
-                                            .sendMentionNotifications(
-                                          text: text,
-                                          postId: widget.postId,
-                                          commentId: commentId,
-                                        );
-
-                                        // Fire comment notification (not to self).
-                                        final postDoc = await FirebaseFirestore
-                                            .instance
-                                            .collection('posts')
-                                            .doc(widget.postId)
-                                            .get();
-                                        final Map<String, dynamic> postData =
-                                            postDoc.data() ?? {};
-                                        final targetPostOwnerId = postData['userId']
-                                                as String? ??
-                                            '';
-                                        if (user != null &&
-                                            user.uid != targetPostOwnerId &&
-                                            targetPostOwnerId.isNotEmpty) {
-                                          try {
-                                            final senderDoc =
-                                                await FirebaseFirestore
-                                                    .instance
-                                                    .collection('users')
-                                                    .doc(user.uid)
-                                                    .get();
-                                            final Map<String, dynamic>
-                                                senderData =
-                                                senderDoc.data() ?? {};
-                                            await NotificationRepoImp()
-                                                .createNotification(
-                                              NotificationModel(
-                                                id: '',
-                                                senderId: user.uid,
-                                                senderName: senderData['name']
-                                                        as String? ??
-                                                    user.displayName ??
-                                                    'Someone',
-                                                senderUsername: senderData[
-                                                        'username']
-                                                    as String? ??
-                                                    '',
-                                                senderPhoto: senderData[
-                                                        'profileImage']
-                                                    as String?,
-                                                receiverId: targetPostOwnerId,
-                                                type: NotificationType.comment,
-                                                postId: widget.postId,
-                                                commentId: commentId,
-                                                createdAt: DateTime.now(),
-                                                isRead: false,
-                                              ),
-                                            );
-                                          } catch (_) {
-                                            // Notification failure must not break comment.
-                                          }
-                                        }
-
-                                        _commentController.clear();
-                                      } catch (e) {
-                                        if (mounted) {
-                                          messenger.showSnackBar(
-                                            SnackBar(
-                                              content: Text(e
-                                                  .toString()
-                                                  .replaceFirst(
-                                                      'Exception: ', '')),
-                                              backgroundColor:
-                                                  AppColors.error,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        12),
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      } finally {
-                                        if (mounted) {
-                                          setState(() =>
-                                              _isSendingComment = false);
-                                        }
-                                      }
-                                    }
-                                  },
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    AppColors.primary,
-                                    AppColors.primaryDark
-                                  ],
-                                ),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: (_isSendingComment || _isProcessing)
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(14),
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : Icon(
-                                      _editingCommentId != null
-                                          ? Icons.check_rounded
-                                          : Icons.send_rounded,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Post'),
+        leading: AppIconButton(
+          icon: Icons.arrow_back_ios_new,
+          size: 16,
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-    );
-  }
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: widget.postRepo.getPostStream(widget.postId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return ListView(
+                    padding: const EdgeInsets.only(top: 12),
+                    children: const [
+                      PostCardShimmer(hasImage: true),
+                      SizedBox(height: 16),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: CommentShimmer(itemCount: 2),
+                      ),
+                    ],
+                  );
+                }
+                if (snapshot.hasError) {
+                  return PostDetailsErrorView(
+                    error: snapshot.error,
+                    onRetry: () => setState(() {}),
+                  );
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return PostDetailsNotFoundView(
+                    onGoBack: () => Navigator.pop(context),
+                  );
+                }
 
-  void _showLikedBySheet(BuildContext context, List<String> userIds) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => LikedBySheet(userIds: userIds, postRepo: widget.postRepo),
+                final postDoc = snapshot.data!;
+                final data = postDoc.data() as Map<String, dynamic>;
+                final postOwnerId = data['userId'] as String? ?? '';
+                final postOwnerName = data['userName'] as String? ?? 'Unknown';
+                final serverLikes = List<String>.from(data['likes'] ?? []);
+                final serverLikeCount = (data['likeCount'] as num?)?.toInt() ?? serverLikes.length;
+
+                // Clear optimistic state when server state matches
+                if (_optimisticLiked != null && serverLikes.contains(currentUserId) == _optimisticLiked) {
+                  _optimisticLiked = null;
+                  _optimisticLikeCount = null;
+                }
+
+                final isLiked = _optimisticLiked ?? serverLikes.contains(currentUserId);
+                final likeCount = _optimisticLikeCount ?? serverLikeCount;
+                final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+
+                return StreamBuilder<QuerySnapshot>(
+                  stream: widget.postRepo.getCommentsStream(widget.postId),
+                  builder: (context, commSnap) {
+                    final commentCount = commSnap.hasData
+                        ? commSnap.data!.docs.length
+                        : ((data['commentCount'] as num?)?.toInt() ?? 0);
+
+                    return SingleChildScrollView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          PostDetailsHeader(
+                            postId: widget.postId,
+                            postOwnerId: postOwnerId,
+                            postOwnerName: postOwnerName,
+                            createdAt: createdAt,
+                            lastEditedAt: data['lastEditedAt'],
+                            currentUserId: currentUserId,
+                            title: data['title'] ?? '',
+                            description: data['description'] ?? '',
+                            imageUrl: data['imageUrl'],
+                            deleteHash: data['deleteHash'],
+                          ),
+                          PostDetailsContent(
+                            title: data['title'] ?? '',
+                            description: data['description'] ?? '',
+                            imageUrl: data['imageUrl'],
+                          ),
+                          PostDetailsActionsBar(
+                            postId: widget.postId,
+                            postDoc: postDoc,
+                            isLiked: isLiked,
+                            likeCount: likeCount,
+                            commentCount: commentCount,
+                            serverLikes: serverLikes,
+                            postRepo: widget.postRepo,
+                            onToggleLike: () => _handleToggleLike(currentUserId, serverLikes, serverLikeCount),
+                          ),
+                          PostDetailsCommentsSection(
+                            commSnap: commSnap,
+                            currentUserId: currentUserId,
+                            postOwnerId: postOwnerId,
+                            isProcessing: _isProcessing,
+                            onStartEditing: _startEditingComment,
+                            onConfirmDelete: _confirmDeleteComment,
+                            onRetry: () => setState(() {}),
+                          ),
+                          const SizedBox(height: 80),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          PostCommentInputBar(
+            controller: _commentController,
+            focusNode: _commentFocusNode,
+            editingCommentId: _editingCommentId,
+            isSendingComment: _isSendingComment,
+            isProcessing: _isProcessing,
+            onCancelEditing: _cancelEditingComment,
+            onSubmit: _handleCommentSubmit,
+          ),
+        ],
+      ),
     );
   }
 }

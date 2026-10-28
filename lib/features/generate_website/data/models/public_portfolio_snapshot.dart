@@ -25,6 +25,7 @@ class PublicPortfolioSnapshot {
   final List<ExperienceModel> experience;
   final List<EducationModel> education;
   final List<CertificateModel> certificates;
+  final String? cvLink;
   final String? resumeUrl;
   final String publicPortfolioUrl;
   final bool isPublic;
@@ -34,6 +35,7 @@ class PublicPortfolioSnapshot {
   final DateTime? updatedAt;
 
   String get displayName => name;
+  String? get effectiveCvLink => (cvLink?.trim().isNotEmpty == true) ? cvLink!.trim() : ((resumeUrl?.trim().isNotEmpty == true) ? resumeUrl!.trim() : null);
 
   const PublicPortfolioSnapshot({
     required this.uid,
@@ -53,6 +55,7 @@ class PublicPortfolioSnapshot {
     this.experience = const [],
     this.education = const [],
     this.certificates = const [],
+    this.cvLink,
     this.resumeUrl,
     required this.publicPortfolioUrl,
     this.isPublic = true,
@@ -119,7 +122,8 @@ class PublicPortfolioSnapshot {
       experience: experience,
       education: education,
       certificates: certificates,
-      resumeUrl: data['resumeUrl'] as String? ?? data['cvUrl'] as String?,
+      cvLink: data['cvLink'] as String? ?? data['resumeUrl'] as String? ?? data['cvUrl'] as String?,
+      resumeUrl: data['cvLink'] as String? ?? data['resumeUrl'] as String? ?? data['cvUrl'] as String?,
       publicPortfolioUrl: data['publicPortfolioUrl'] as String? ?? '',
       isPublic: (data['isPublic'] as bool?) ?? true,
       version: data['version'] as String? ?? '1.0.0',
@@ -151,7 +155,9 @@ class PublicPortfolioSnapshot {
       if (location != null) 'location': location,
       if (phone != null) 'phone': phone,
       if (profileImage != null) 'profileImage': profileImage,
-      if (resumeUrl != null && resumeUrl!.trim().isNotEmpty) 'resumeUrl': resumeUrl!.trim(),
+      if (cvLink != null && cvLink!.trim().isNotEmpty) 'cvLink': cvLink!.trim(),
+      if ((cvLink != null && cvLink!.trim().isNotEmpty) || (resumeUrl != null && resumeUrl!.trim().isNotEmpty))
+        'resumeUrl': (cvLink?.trim().isNotEmpty == true ? cvLink!.trim() : resumeUrl!.trim()),
       'skills': skills,
       'socialLinks': socialLinks.toMap(),
       'projects': projects.map((p) => p.toMap(includeId: true)).toList(),
@@ -184,7 +190,8 @@ class PublicPortfolioSnapshot {
       socialLinks: socialLinks,
       profileSlug: profileSlug ?? username,
       portfolioCompleted: true,
-      resumeUrl: resumeUrl,
+      cvLink: cvLink ?? resumeUrl,
+      resumeUrl: cvLink ?? resumeUrl,
       publicPortfolioUrl: publicPortfolioUrl,
       createdAt: generatedAt,
     );

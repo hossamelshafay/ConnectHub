@@ -30,9 +30,15 @@ class WebPortfolioRepositoryImpl implements WebPortfolioRepository {
     if (!forceRefresh && _cache.containsKey(cacheKey)) {
       return _cache[cacheKey]!;
     }
+    if (forceRefresh) {
+      _cache.clear();
+    }
 
-    // 2. Read ONLY public_portfolios snapshot (Zero subcollection reads, keeping users/ private)
-    final snapshot = await remoteDataSource.getPublicPortfolioSnapshot(identifier);
+    // 2. Read public_portfolios snapshot
+    final snapshot = await remoteDataSource.getPublicPortfolioSnapshot(
+      identifier,
+      forceServer: forceRefresh,
+    );
     if (snapshot == null) {
       throw PortfolioNotFoundException(identifier ?? 'unknown');
     }
@@ -51,6 +57,28 @@ class WebPortfolioRepositoryImpl implements WebPortfolioRepository {
       certificates: certificates,
     );
 
+    // Retrieve latest uploaded CV URL from snapshot, user model, or direct user doc
+    String? effectiveResumeUrl = (snapshot.resumeUrl != null && snapshot.resumeUrl!.trim().isNotEmpty)
+        ? snapshot.resumeUrl!.trim()
+        : (user.resumeUrl != null && user.resumeUrl!.trim().isNotEmpty)
+            ? user.resumeUrl!.trim()
+            : null;
+
+    if (effectiveResumeUrl == null || effectiveResumeUrl.isEmpty) {
+      try {
+        final directUser = await remoteDataSource.getUserByIdOrUsername(snapshot.uid);
+        if (directUser != null &&
+            directUser.resumeUrl != null &&
+            directUser.resumeUrl!.trim().isNotEmpty) {
+          effectiveResumeUrl = directUser.resumeUrl!.trim();
+        }
+      } catch (_) {
+        // Fallback to null
+      }
+    }
+
+    final effectiveCvLink = snapshot.effectiveCvLink ?? user.cvLink ?? user.resumeUrl;
+
     final viewData = PortfolioViewData(
       user: user,
       projects: projects,
@@ -60,7 +88,8 @@ class WebPortfolioRepositoryImpl implements WebPortfolioRepository {
       skills: skillItems,
       stats: stats,
       roleTitles: roleTitles,
-      resumeUrl: snapshot.resumeUrl ?? user.resumeUrl,
+      cvLink: effectiveCvLink,
+      resumeUrl: effectiveCvLink ?? effectiveResumeUrl,
     );
 
     _cache[cacheKey] = viewData;

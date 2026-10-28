@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../theme/web_colors.dart';
-import '../theme/web_text_styles.dart';
 import '../theme/web_theme.dart';
 import '../models/portfolio_view_data.dart';
 import '../widgets/responsive_container.dart';
@@ -23,18 +22,22 @@ class FooterSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = WebTheme.isMobile(context);
 
+    final bgColor = WebColors.getBackground(isDark: isDark);
+    final borderColor = isDark ? WebColors.darkBorder : WebColors.lightBorder;
+
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? WebColors.background : WebColors.lightBackground,
+        color: bgColor,
         border: Border(
           top: BorderSide(
-            color: isDark ? WebColors.border : WebColors.lightBorder,
+            color: borderColor,
             width: 1,
           ),
         ),
       ),
       padding: EdgeInsets.symmetric(
-        vertical: isMobile ? 32.0 : 48.0,
+        vertical: isMobile ? 32.0 : 44.0,
       ),
       child: ResponsiveContainer(
         padding: EdgeInsets.symmetric(horizontal: isMobile ? 16.0 : 48.0),
@@ -52,16 +55,16 @@ class FooterSection extends StatelessWidget {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          gradient: WebColors.primaryGradient,
+                          color: isDark ? WebColors.darkPrimary : WebColors.lightPrimary,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'CH',
                             style: TextStyle(
-                              color: Color(0xFF090909),
+                              color: isDark ? const Color(0xFF141210) : Colors.white,
                               fontWeight: FontWeight.w900,
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -70,7 +73,12 @@ class FooterSection extends StatelessWidget {
                       Expanded(
                         child: Text(
                           data.user.name,
-                          style: WebTextStyles.cardTitle(isDark: isDark).copyWith(fontSize: 15),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? WebColors.darkTextPrimary : WebColors.lightTextPrimary,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -86,29 +94,31 @@ class FooterSection extends StatelessWidget {
                   child: GestureDetector(
                     onTap: onScrollToTop,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isDark ? WebColors.surfaceElevated : WebColors.lightSurface,
-                        borderRadius: BorderRadius.circular(10),
+                        color: isDark ? WebColors.darkSurfaceCard : WebColors.lightSurface,
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isDark ? WebColors.border : WebColors.lightBorder,
+                          color: borderColor,
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.arrow_upward_rounded,
                             size: 15,
-                            color: WebColors.primaryLight,
+                            color: isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary,
                           ),
                           if (!isMobile) ...[
                             const SizedBox(width: 6),
                             Text(
                               'Back to top',
-                              style: WebTextStyles.bodySmall(isDark: isDark).copyWith(
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: isDark ? WebColors.textPrimary : WebColors.lightTextPrimary,
+                                color: isDark ? WebColors.darkTextPrimary : WebColors.lightTextPrimary,
                               ),
                             ),
                           ],
@@ -120,12 +130,12 @@ class FooterSection extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Divider(
-              color: isDark ? WebColors.border : WebColors.lightBorder,
+              color: borderColor,
               height: 1,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // Bottom Credits and Social Links
             isMobile
@@ -133,7 +143,12 @@ class FooterSection extends StatelessWidget {
                     children: [
                       Text(
                         '© ${DateTime.now().year} ${data.user.name}. All rights reserved.',
-                        style: WebTextStyles.bodySmall(isDark: isDark),
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w400,
+                          color: isDark ? WebColors.darkTextMuted : WebColors.lightTextMuted,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 14),
@@ -146,7 +161,12 @@ class FooterSection extends StatelessWidget {
                       Expanded(
                         child: Text(
                           '© ${DateTime.now().year} ${data.user.name}. All rights reserved.',
-                          style: WebTextStyles.bodySmall(isDark: isDark),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: isDark ? WebColors.darkTextMuted : WebColors.lightTextMuted,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -171,6 +191,11 @@ class FooterSection extends StatelessWidget {
     final websiteUrl = (data.user.socialLinks.website != null && data.user.socialLinks.website!.trim().isNotEmpty)
         ? data.user.socialLinks.website!.trim()
         : null;
+
+    final hasAny = githubUrl != null || linkedinUrl != null || websiteUrl != null;
+    if (!hasAny) {
+      return const SizedBox.shrink();
+    }
 
     return Wrap(
       spacing: 8,

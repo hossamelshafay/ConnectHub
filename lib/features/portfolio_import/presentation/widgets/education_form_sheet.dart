@@ -3,33 +3,62 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/portfolio/data/models/education_model.dart';
 import 'package:connecthub/features/portfolio_import/presentation/cubit/portfolio_editor_cubit.dart';
 
+import 'package:connecthub/features/portfolio/presentation/cubit/portfolio_cubit.dart';
+import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/features/portfolio_import/presentation/widgets/portfolio_form_field.dart';
+
 class EducationFormSheet extends StatefulWidget {
   final String uid;
   final EducationModel? education;
+  final PortfolioCubit? portfolioCubit;
 
   const EducationFormSheet({
     super.key,
     required this.uid,
     this.education,
+    this.portfolioCubit,
   });
 
   static Future<void> show(
     BuildContext context, {
     required String uid,
     EducationModel? education,
+    PortfolioCubit? portfolioCubit,
   }) {
     final cubit = context.read<PortfolioEditorCubit>();
+    PortfolioCubit? effectivePortfolioCubit = portfolioCubit;
+    if (effectivePortfolioCubit == null) {
+      try {
+        effectivePortfolioCubit = context.read<PortfolioCubit>();
+      } catch (_) {}
+    }
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: isDark ? const Color(0xFF1C1A18) : const Color(0xFFFAF8F5),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => BlocProvider.value(
-        value: cubit,
-        child: EducationFormSheet(uid: uid, education: education),
-      ),
+      builder: (_) {
+        Widget content = EducationFormSheet(
+          uid: uid,
+          education: education,
+          portfolioCubit: effectivePortfolioCubit,
+        );
+        if (effectivePortfolioCubit != null) {
+          content = BlocProvider.value(
+            value: effectivePortfolioCubit,
+            child: content,
+          );
+        }
+        return BlocProvider.value(
+          value: cubit,
+          child: content,
+        );
+      },
     );
   }
 
@@ -85,17 +114,28 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
     );
 
     final cubit = context.read<PortfolioEditorCubit>();
+    PortfolioCubit? portCubit = widget.portfolioCubit;
+    if (portCubit == null) {
+      try {
+        portCubit = context.read<PortfolioCubit>();
+      } catch (_) {}
+    }
+
     if (widget.education != null) {
       await cubit.updateEducation(uid: widget.uid, education: model);
     } else {
       await cubit.addEducation(uid: widget.uid, education: model);
     }
 
+    portCubit?.loadPortfolio(widget.uid);
+
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isEditing = widget.education != null;
     return DraggableScrollableSheet(
       expand: false,
@@ -118,7 +158,7 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF475569),
+                    color: isDark ? const Color(0xFF55504A) : const Color(0xFFD4CDC5),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -126,14 +166,14 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
               const SizedBox(height: 16),
               Text(
                 isEditing ? 'Edit Education' : 'Add Education',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 20),
-              _buildField(
+              PortfolioFormField(
                 label: 'INSTITUTION / UNIVERSITY *',
                 controller: _institutionCtrl,
                 validator: (val) => (val == null || val.trim().isEmpty)
@@ -141,7 +181,7 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
                     : null,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'DEGREE *',
                 controller: _degreeCtrl,
                 validator: (val) => (val == null || val.trim().isEmpty)
@@ -149,17 +189,17 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
                     : null,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'FIELD OF STUDY / MAJOR',
                 controller: _fieldOfStudyCtrl,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'GRADE / GPA',
                 controller: _gradeCtrl,
               ),
               const SizedBox(height: 14),
-              _buildField(
+              PortfolioFormField(
                 label: 'DESCRIPTION / HIGHLIGHTS',
                 controller: _descCtrl,
                 maxLines: 3,
@@ -170,8 +210,8 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF94A3B8),
-                        side: const BorderSide(color: Color(0xFF334155)),
+                        foregroundColor: AppColors.textMuted,
+                        side: BorderSide(color: AppColors.glassBorder),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -185,8 +225,8 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF38BDF8),
-                        foregroundColor: const Color(0xFF0F172A),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.isDark ? const Color(0xFF141210) : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -205,61 +245,6 @@ class _EducationFormSheetState extends State<EducationFormSheet> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildField({
-    required String label,
-    required TextEditingController controller,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          validator: validator,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF0F172A),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF334155)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF334155)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF38BDF8)),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

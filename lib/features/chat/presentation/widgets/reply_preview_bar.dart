@@ -57,7 +57,7 @@ class ReplyPreviewBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close_rounded,
+            icon: Icon(Icons.close_rounded,
                 size: 20, color: AppColors.textHint),
             onPressed: onCancel,
             padding: EdgeInsets.zero,

@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/features/portfolio_import/presentation/cubit/portfolio_import_cubit.dart';
 import 'package:connecthub/features/portfolio_import/presentation/cubit/portfolio_import_state.dart';
 import 'package:connecthub/features/portfolio_import/presentation/views/cv_preview_view.dart';
+import 'package:connecthub/features/portfolio_import/presentation/widgets/ai_loading_dialog.dart';
+import 'package:connecthub/core/utils/app_theme.dart';
+import 'package:connecthub/features/portfolio/presentation/widgets/portfolio_theme.dart';
 
 /// A standalone "Import CV with AI" button card.
 ///
@@ -12,11 +15,13 @@ import 'package:connecthub/features/portfolio_import/presentation/views/cv_previ
 class UploadCvButton extends StatelessWidget {
   final String userId;
   final VoidCallback? onImportComplete;
+  final bool isCompactGlass;
 
   const UploadCvButton({
     super.key,
     required this.userId,
     this.onImportComplete,
+    this.isCompactGlass = false,
   });
 
   @override
@@ -26,36 +31,65 @@ class UploadCvButton extends StatelessWidget {
       child: _UploadCvButtonBody(
         userId: userId,
         onImportComplete: onImportComplete,
+        isCompactGlass: isCompactGlass,
       ),
     );
   }
 }
 
-class _UploadCvButtonBody extends StatelessWidget {
+class _UploadCvButtonBody extends StatefulWidget {
   final String userId;
   final VoidCallback? onImportComplete;
+  final bool isCompactGlass;
 
   const _UploadCvButtonBody({
     required this.userId,
     this.onImportComplete,
+    this.isCompactGlass = false,
   });
+
+  @override
+  State<_UploadCvButtonBody> createState() => _UploadCvButtonBodyState();
+}
+
+class _UploadCvButtonBodyState extends State<_UploadCvButtonBody> {
+  void _showLoading() {
+    AiLoadingDialog.show(context);
+  }
+
+  void _hideLoading() {
+    AiLoadingDialog.hide(context);
+  }
+
+  @override
+  void dispose() {
+    AiLoadingDialog.hide(context);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<PortfolioImportCubit, PortfolioImportState>(
       listener: (context, state) {
         if (state is PortfolioImportSuccess) {
+          _hideLoading();
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => CvPreviewView(
-                portfolio: state.portfolio,
-                userId: userId,
-                onImportComplete: onImportComplete,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  FadeTransition(
+                opacity: animation,
+                child: CvPreviewView(
+                  portfolio: state.portfolio,
+                  userId: widget.userId,
+                  onImportComplete: widget.onImportComplete,
+                ),
               ),
+              transitionDuration: const Duration(milliseconds: 350),
             ),
           );
         } else if (state is PortfolioImportError) {
+          _hideLoading();
           _showError(
             context,
             state.message,
@@ -67,13 +101,27 @@ class _UploadCvButtonBody extends StatelessWidget {
                 : null,
           );
         } else if (state is PortfolioImportFileSelected) {
+          _showLoading();
           // Auto-upload after file is selected
           context.read<PortfolioImportCubit>().uploadCv(state.file);
+        } else if (state is PortfolioImportUploading) {
+          _showLoading();
         }
       },
       builder: (context, state) {
         final isLoading = state is PortfolioImportUploading ||
             state is PortfolioImportFileSelected;
+
+        if (widget.isCompactGlass) {
+          return GestureDetector(
+            onTap: isLoading
+                ? null
+                : () => context.read<PortfolioImportCubit>().pickFile(),
+            child: isLoading
+                ? _buildCompactGlassLoading(state)
+                : _buildCompactGlassIdle(),
+          );
+        }
 
         return GestureDetector(
           onTap: isLoading
@@ -85,8 +133,8 @@ class _UploadCvButtonBody extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF38BDF8).withValues(alpha: 0.12),
-                  const Color(0xFF818CF8).withValues(alpha: 0.12),
+                  AppColors.primary.withValues(alpha: 0.12),
+                  AppColors.primaryLight.withValues(alpha: 0.12),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -94,8 +142,8 @@ class _UploadCvButtonBody extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isLoading
-                    ? const Color(0xFF38BDF8)
-                    : const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                    ? AppColors.primary
+                    : AppColors.primary.withValues(alpha: 0.4),
                 width: 1.5,
               ),
             ),
@@ -108,18 +156,94 @@ class _UploadCvButtonBody extends StatelessWidget {
     );
   }
 
+  Widget _buildCompactGlassIdle() {
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: kPortfolioGlassButtonBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kPortfolioCardBorder, width: 1),
+        boxShadow: kPortfolioSoftShadow,
+      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.description_outlined, color: kPortfolioAccent, size: 18),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Upload CV',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: kPortfolioTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.file_upload_outlined, color: kPortfolioTextMuted, size: 15),
+            ],
+          ),
+        );
+      }
+
+  Widget _buildCompactGlassLoading(PortfolioImportState state) {
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: kPortfolioGlassButtonBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kPortfolioAccent.withValues(alpha: 0.5), width: 1),
+        boxShadow: kPortfolioSoftShadow,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: kPortfolioAccent),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Analyzing...',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: kPortfolioAccent,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildIdle() {
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+            color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.auto_awesome_rounded,
-            color: Color(0xFF38BDF8),
+            color: AppColors.primary,
             size: 26,
           ),
         ),
@@ -127,20 +251,20 @@ class _UploadCvButtonBody extends StatelessWidget {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 'Import CV with AI',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 3),
+              const SizedBox(height: 3),
               Text(
                 'Upload your PDF and let Gemini populate your portfolio automatically.',
                 style: TextStyle(
-                  color: Color(0xFF94A3B8),
+                  color: AppColors.textSecondary,
                   fontSize: 12,
                   height: 1.4,
                 ),
@@ -152,13 +276,13 @@ class _UploadCvButtonBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF38BDF8),
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Text(
+          child: Text(
             'Upload',
             style: TextStyle(
-              color: Color(0xFF0F172A),
+              color: AppColors.isDark ? const Color(0xFF141210) : Colors.white,
               fontWeight: FontWeight.w700,
               fontSize: 13,
             ),
@@ -175,20 +299,20 @@ class _UploadCvButtonBody extends StatelessWidget {
 
     return Row(
       children: [
-        const SizedBox(
+        SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
             strokeWidth: 2.5,
-            color: Color(0xFF38BDF8),
+            color: AppColors.primary,
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF38BDF8),
+            style: TextStyle(
+              color: AppColors.primary,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -202,21 +326,21 @@ class _UploadCvButtonBody extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.info_outline_rounded, color: Color(0xFF38BDF8)),
-            SizedBox(width: 10),
+            Icon(Icons.info_outline_rounded, color: AppColors.primary),
+            const SizedBox(width: 10),
             Text(
               'AI Service Status',
-              style: TextStyle(color: Colors.white, fontSize: 17),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 17),
             ),
           ],
         ),
         content: Text(
           message,
-          style: const TextStyle(color: Color(0xFF94A3B8), height: 1.5),
+          style: TextStyle(color: AppColors.textSecondary, height: 1.5),
         ),
         actions: [
           if (onRetry != null)
@@ -225,24 +349,30 @@ class _UploadCvButtonBody extends StatelessWidget {
                 Navigator.pop(context);
                 onRetry();
               },
-              child: const Text(
+              child: Text(
                 'Retry',
-                style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
               ),
             ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<PortfolioImportCubit>().reset();
+            },
+            child: Text(
               'OK',
-              style: TextStyle(color: Color(0xFF94A3B8)),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
       ),
-    );
-    // Reset cubit if no retry is requested so user can pick another file
-    if (context.mounted && onRetry == null) {
-      context.read<PortfolioImportCubit>().reset();
-    }
+    ).then((_) {
+      if (context.mounted && context.read<PortfolioImportCubit>().state is PortfolioImportError) {
+        context.read<PortfolioImportCubit>().reset();
+      }
+    });
   }
 }

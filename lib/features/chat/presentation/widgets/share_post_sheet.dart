@@ -51,7 +51,7 @@ class _SharePostSheetState extends State<SharePostSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -77,7 +77,7 @@ class _SharePostSheetState extends State<SharePostSheet> {
                   Text('Share Post', style: AppTextStyles.headline3),
                   const Spacer(),
                   if (_isSharing)
-                    const SizedBox(
+                    SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -97,8 +97,8 @@ class _SharePostSheetState extends State<SharePostSheet> {
                 stream: widget.repo.getConversationsStream(widget.myUid),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.all(32),
+                    return Padding(
+                      padding: const EdgeInsets.all(32),
                       child: Center(
                         child:
                             CircularProgressIndicator(color: AppColors.primary),
@@ -145,7 +145,7 @@ class _SharePostSheetState extends State<SharePostSheet> {
                                 overflow: TextOverflow.ellipsis,
                               )
                             : null,
-                        trailing: const Icon(
+                        trailing: Icon(
                           Icons.send_rounded,
                           size: 20,
                           color: AppColors.primary,

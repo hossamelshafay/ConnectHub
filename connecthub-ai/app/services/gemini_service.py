@@ -62,6 +62,9 @@ class GeminiService:
         max_retries:          Number of retry attempts on transient failures per model.
     """
 
+    _cached_all_models: List[str] = []
+    _cached_supported_models: List[str] = []
+
     def __init__(
         self,
         model_name: Optional[str] = None,
@@ -111,26 +114,28 @@ class GeminiService:
         self.sdk_version = getattr(genai, "__version__", "unknown")
         self.api_version = getattr(_api_client, "DEFAULT_API_VERSION", "v1beta")
 
-        # Discover all models available to this API key
-        try:
-            raw_models = list(self._client.models.list())
-            self.all_available_models = [m.name for m in raw_models]
-        except Exception as exc:
-            logger.error("gemini.discovery_failed", error=str(exc))
-            raise GeminiServiceError(
-                f"Failed to query available models from Gemini API: {exc}"
-            ) from exc
+        # Discover models or use cache
+        if not GeminiService._cached_all_models:
+            try:
+                raw_models = list(self._client.models.list())
+                GeminiService._cached_all_models = [m.name for m in raw_models]
+                supported: List[str] = []
+                for m in raw_models:
+                    actions = (
+                        getattr(m, "supported_actions", None)
+                        or getattr(m, "supported_generation_methods", None)
+                        or []
+                    )
+                    if "generateContent" in actions:
+                        supported.append(m.name)
+                GeminiService._cached_supported_models = supported
+            except Exception as exc:
+                logger.warning("gemini.discovery_deferred", error=str(exc))
+                GeminiService._cached_all_models = [self.requested_model_name]
+                GeminiService._cached_supported_models = [self.requested_model_name]
 
-        # Filter only models that support generateContent
-        self.supported_models = []
-        for m in raw_models:
-            actions = (
-                getattr(m, "supported_actions", None)
-                or getattr(m, "supported_generation_methods", None)
-                or []
-            )
-            if "generateContent" in actions:
-                self.supported_models.append(m.name)
+        self.all_available_models = list(GeminiService._cached_all_models)
+        self.supported_models = list(GeminiService._cached_supported_models)
 
         # Build fallback chain dynamically from supported models (no hardcoded names)
         self._build_fallback_chain()
@@ -167,14 +172,20 @@ class GeminiService:
         general_models = [m for m in self.supported_models if is_general_model(m)]
         other_models = [m for m in self.supported_models if not is_general_model(m)]
 
-        # Within general models, rank flash models first, then pro, then other general
-        flash_models = [m for m in general_models if "flash" in clean_name(m)]
-        pro_models = [m for m in general_models if "pro" in clean_name(m) and m not in flash_models]
+        # Within general models, rank flash-lite models first for speed, then flash, then pro, then other general
+        flash_lite_models = [m for m in general_models if "flash-lite" in clean_name(m)]
+        flash_models = [
+            m for m in general_models if "flash" in clean_name(m) and m not in flash_lite_models
+        ]
+        pro_models = [
+            m for m in general_models if "pro" in clean_name(m) and m not in flash_models and m not in flash_lite_models
+        ]
         remaining_general = [
-            m for m in general_models if m not in flash_models and m not in pro_models
+            m for m in general_models
+            if m not in flash_models and m not in pro_models and m not in flash_lite_models
         ]
 
-        ordered_candidates = flash_models + pro_models + remaining_general + other_models
+        ordered_candidates = flash_lite_models + flash_models + pro_models + remaining_general + other_models
 
         # If user configured a specific model, prioritize it if it's supported
         req_clean = clean_name(self.requested_model_name)
@@ -243,6 +254,7 @@ class GeminiService:
         config = types.GenerateContentConfig(
             temperature=temperature,
             response_mime_type=response_mime_type,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
 
         # Build current candidate list excluding known dead/404 models

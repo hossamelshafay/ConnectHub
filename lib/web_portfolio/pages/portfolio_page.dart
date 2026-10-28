@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../theme/web_colors.dart';
 import '../theme/web_theme.dart';
@@ -10,12 +9,14 @@ import '../domain/usecases/load_portfolio_use_case.dart';
 import '../widgets/portfolio_shimmer_loading.dart';
 import 'portfolio_state_views.dart';
 import '../widgets/web_navigation_bar.dart';
+import '../widgets/web_sidebar_nav.dart';
+import '../widgets/portfolio_mobile_drawer.dart';
+import '../widgets/currently_learning_card.dart';
 import '../sections/hero_section.dart';
 import '../sections/about_section.dart';
 import '../sections/skills_section.dart';
 import '../sections/experience_section.dart';
 import '../sections/projects_section.dart';
-import '../sections/education_section.dart';
 import '../sections/certificates_section.dart';
 import '../sections/contact_section.dart';
 import '../sections/footer_section.dart';
@@ -29,7 +30,8 @@ enum _PortfolioStatus {
   error,
 }
 
-/// The master single-page view assembling all 9 sections of the Web Portfolio.
+/// The master single-page view assembling the Web Portfolio.
+/// Faithfully recreates the Titanium/Beige design mockup.
 class WebPortfolioPage extends StatefulWidget {
   final String? identifier;
   final String? username;
@@ -54,20 +56,19 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
   final GlobalKey _skillsKey = GlobalKey();
   final GlobalKey _experienceKey = GlobalKey();
   final GlobalKey _projectsKey = GlobalKey();
-  final GlobalKey _educationKey = GlobalKey();
   final GlobalKey _certificatesKey = GlobalKey();
   final GlobalKey _contactKey = GlobalKey();
 
-  late final List<GlobalKey> _sectionKeys;
   late final LoadPortfolioUseCase _loadPortfolioUseCase;
 
   PortfolioViewData? _portfolioData;
   _PortfolioStatus _status = _PortfolioStatus.loading;
   String _errorMessage = '';
 
-  // Luxury design is dark-only — always true.
-  static const bool _isDark = true;
+  // Theme state: defaults to false (Warm Titanium / Beige matching mockup)
+  bool _isDark = false;
   int _activeNavIndex = 0;
+  int _activeSidebarIndex = 0;
 
   String? get _effectiveIdentifier =>
       (widget.identifier != null && widget.identifier!.trim().isNotEmpty)
@@ -79,16 +80,6 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
   @override
   void initState() {
     super.initState();
-    _sectionKeys = [
-      _heroKey,
-      _aboutKey,
-      _skillsKey,
-      _experienceKey,
-      _projectsKey,
-      _educationKey,
-      _certificatesKey,
-      _contactKey,
-    ];
 
     final remoteDataSource = WebPortfolioRemoteDataSourceImpl();
     final repository = WebPortfolioRepositoryImpl(remoteDataSource: remoteDataSource);
@@ -153,54 +144,61 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
     }
   }
 
-  void _scrollToSection(int index) {
-    if (index >= 0 && index < _sectionKeys.length) {
-      _scrollToKey(_sectionKeys[index]);
-      setState(() {
-        _activeNavIndex = index;
-      });
-    }
-  }
-
   void _scrollToSectionByTitle(String title) {
     switch (title.toLowerCase()) {
+      case 'home':
       case 'hero':
+      case 'overview':
         _scrollToKey(_heroKey);
+        setState(() {
+          _activeNavIndex = 0;
+          _activeSidebarIndex = 0;
+        });
         break;
       case 'about':
         _scrollToKey(_aboutKey);
+        setState(() {
+          _activeNavIndex = 4;
+          _activeSidebarIndex = 6;
+        });
         break;
       case 'skills':
         _scrollToKey(_skillsKey);
+        setState(() {
+          _activeSidebarIndex = 4;
+        });
         break;
       case 'experience':
         _scrollToKey(_experienceKey);
+        setState(() {
+          _activeNavIndex = 2;
+          _activeSidebarIndex = 2;
+        });
         break;
       case 'projects':
         _scrollToKey(_projectsKey);
-        break;
-      case 'education':
-        _scrollToKey(_educationKey);
+        setState(() {
+          _activeNavIndex = 1;
+          _activeSidebarIndex = 1;
+        });
         break;
       case 'certificates':
         _scrollToKey(_certificatesKey);
+        setState(() {
+          _activeNavIndex = 3;
+          _activeSidebarIndex = 3;
+        });
+        break;
+      case 'posts':
+        _scrollToKey(_projectsKey);
+        setState(() {
+          _activeSidebarIndex = 5;
+        });
         break;
       case 'contact':
         _scrollToKey(_contactKey);
         break;
     }
-  }
-
-  List<String> _getVisibleNavTitles(PortfolioViewData data) {
-    return [
-      'About',
-      if (data.skills.isNotEmpty) 'Skills',
-      if (data.experiences.isNotEmpty) 'Experience',
-      if (data.projects.isNotEmpty) 'Projects',
-      if (data.educations.isNotEmpty) 'Education',
-      if (data.certificates.isNotEmpty) 'Certificates',
-      'Contact',
-    ];
   }
 
   @override
@@ -234,10 +232,10 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
     }
 
     return Theme(
-      data: WebTheme.darkTheme,
+      data: _isDark ? WebTheme.darkTheme : WebTheme.lightTheme,
       child: Scaffold(
         key: _scaffoldKey,
-        backgroundColor: WebColors.background,
+        backgroundColor: WebColors.getBackground(isDark: _isDark),
         endDrawer: _status == _PortfolioStatus.success ? _buildMobileDrawer(_portfolioData!) : null,
         body: body,
       ),
@@ -245,91 +243,65 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
   }
 
   Widget _buildPortfolioContent(PortfolioViewData data) {
-    final visibleNavTitles = _getVisibleNavTitles(data);
-
     return Stack(
       children: [
-        // Luxury Subtle Dark Gradient & Fine Noise Background
-        const Positioned.fill(
-          child: _LuxuryBackground(),
-        ),
-
-        // Scrollable Content Containing Available Sections
+        // Scrollable Content
         SingleChildScrollView(
           controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
-              const SizedBox(height: WebTheme.navBarHeight), // Space for sticky navbar
-
-              // Section 0: Hero
+              // Section 0: Hero Section with Wallpaper Background & Fade (extends to top under floating navbar)
               Container(
                 key: _heroKey,
                 child: HeroSection(
                   data: data,
                   isDark: _isDark,
-                  onExploreProjects: () => _scrollToKey(
-                    data.projects.isNotEmpty ? _projectsKey : _contactKey,
-                  ),
+                  onExploreProjects: () => _scrollToKey(_projectsKey),
                   onContactMe: () => _scrollToKey(_contactKey),
                 ),
               ),
 
-              // Section 1: About
-              Container(
-                key: _aboutKey,
-                child: AboutSection(
-                  data: data,
-                  isDark: _isDark,
+              // Section 1: Dashboard Main Body
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: WebTheme.maxContentWidth),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isDesktop = constraints.maxWidth >= 1060;
+
+                        return isDesktop
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Left Sidebar Navigation Card
+                                  SizedBox(
+                                    width: 236,
+                                    child: WebSidebarNav(
+                                      activeIndex: _activeSidebarIndex,
+                                      onNavSelected: _scrollToSectionByTitle,
+                                      onGetInTouch: () => _scrollToKey(_contactKey),
+                                      isDark: _isDark,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 24),
+
+                                  // Right Dashboard Content Grid
+                                  Expanded(
+                                    child: _buildDashboardContent(data, isDesktop: true),
+                                  ),
+                                ],
+                              )
+                            : _buildDashboardContent(data, isDesktop: false);
+                      },
+                    ),
+                  ),
                 ),
               ),
 
-              // Section 2: Skills
-              Container(
-                key: _skillsKey,
-                child: SkillsSection(
-                  data: data,
-                  isDark: _isDark,
-                ),
-              ),
-
-              // Section 3: Experience
-              Container(
-                key: _experienceKey,
-                child: ExperienceSection(
-                  data: data,
-                  isDark: _isDark,
-                ),
-              ),
-
-              // Section 4: Projects
-              Container(
-                key: _projectsKey,
-                child: ProjectsSection(
-                  data: data,
-                  isDark: _isDark,
-                ),
-              ),
-
-              // Section 5: Education
-              Container(
-                key: _educationKey,
-                child: EducationSection(
-                  data: data,
-                  isDark: _isDark,
-                ),
-              ),
-
-              // Section 6: Certificates
-              Container(
-                key: _certificatesKey,
-                child: CertificatesSection(
-                  data: data,
-                  isDark: _isDark,
-                ),
-              ),
-
-              // Section 7: Contact
+              // Contact Section
               Container(
                 key: _contactKey,
                 child: ContactSection(
@@ -338,7 +310,7 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
                 ),
               ),
 
-              // Section 8: Footer
+              // Footer
               FooterSection(
                 data: data,
                 isDark: _isDark,
@@ -348,20 +320,28 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
           ),
         ),
 
-        // Sticky Top Navigation Bar
+        // Sticky Floating Top Navigation Bar
         Positioned(
           top: 0,
           left: 0,
           right: 0,
           child: WebNavigationBar(
             activeIndex: _activeNavIndex,
-            visibleNavItems: visibleNavTitles,
-            onNavItemClick: (title) => _scrollToSectionByTitle(title),
             onSectionSelected: (index) {
-              _scrollToSection(index);
+              if (index == 0) _scrollToKey(_heroKey);
+              if (index == 1) _scrollToKey(_projectsKey);
+              if (index == 2) _scrollToKey(_experienceKey);
+              if (index == 3) _scrollToKey(_certificatesKey);
+              if (index == 4) _scrollToKey(_aboutKey);
+              if (index == 5) _scrollToKey(_contactKey);
             },
-            onToggleTheme: () {}, // dark-only luxury design
-            isDark: true,
+            onNavItemClick: _scrollToSectionByTitle,
+            onToggleTheme: () {
+              setState(() {
+                _isDark = !_isDark;
+              });
+            },
+            isDark: _isDark,
             onOpenMobileMenu: () {
               _scaffoldKey.currentState?.openEndDrawer();
             },
@@ -371,194 +351,108 @@ class _WebPortfolioPageState extends State<WebPortfolioPage> {
     );
   }
 
-  Widget _buildMobileDrawer(PortfolioViewData data) {
-    final navTitles = _getVisibleNavTitles(data);
-
-    return Drawer(
-      backgroundColor: WebColors.surfaceElevated,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
+  Widget _buildDashboardContent(PortfolioViewData data, {required bool isDesktop}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Row 1: About Me & Skills (side-by-side on desktop, stacked on mobile)
+        if (isDesktop)
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'ConnectHub',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: WebColors.primary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: WebColors.textSecondary,
-                      size: 20,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Divider(color: WebColors.border, height: 1),
-              const SizedBox(height: 8),
               Expanded(
-                child: ListView.builder(
-                  itemCount: navTitles.length,
-                  itemBuilder: (context, i) {
-                    final title = navTitles[i];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      title: Text(
-                        title,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.5,
-                          color: WebColors.textSecondary,
-                        ),
-                      ),
-                      leading: Icon(
-                        _getNavIconForTitle(title),
-                        size: 18,
-                        color: WebColors.textMuted,
-                      ),
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _scrollToSectionByTitle(title);
-                      },
-                    );
-                  },
+                child: Container(
+                  key: _aboutKey,
+                  child: AboutSection(data: data, isDark: _isDark),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Container(
+                  key: _skillsKey,
+                  child: SkillsSection(data: data, isDark: _isDark),
                 ),
               ),
             ],
+          )
+        else ...[
+          Container(
+            key: _aboutKey,
+            child: AboutSection(data: data, isDark: _isDark),
           ),
-        ),
-      ),
-    );
-  }
-
-  IconData _getNavIconForTitle(String title) {
-    switch (title.toLowerCase()) {
-      case 'about':
-        return Icons.person_outline_rounded;
-      case 'skills':
-        return Icons.terminal_rounded;
-      case 'experience':
-        return Icons.work_outline_rounded;
-      case 'projects':
-        return Icons.dashboard_outlined;
-      case 'education':
-        return Icons.school_outlined;
-      case 'certificates':
-        return Icons.verified_outlined;
-      case 'contact':
-        return Icons.mail_outline_rounded;
-      default:
-        return Icons.circle_outlined;
-    }
-  }
-}
-
-/// A subtle, GPU-optimized luxury background with warm gold ambient radial glows
-/// and a fine stochastic micro-grain texture.
-class _LuxuryBackground extends StatelessWidget {
-  const _LuxuryBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: Stack(
-        children: [
-          // Base deep black
-          Container(color: WebColors.background),
-
-          // Subtle warm gold ambient glow at the top
-          Positioned(
-            top: -200,
-            left: 0,
-            right: 0,
-            height: 750,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topCenter,
-                  radius: 1.1,
-                  colors: [
-                    WebColors.primary.withValues(alpha: 0.05),
-                    WebColors.primaryDark.withValues(alpha: 0.02),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.45, 1.0],
-                ),
-              ),
-            ),
-          ),
-
-          // Secondary subtle gold illumination
-          Positioned(
-            top: 1400,
-            right: -150,
-            width: 600,
-            height: 600,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.center,
-                  radius: 0.85,
-                  colors: [
-                    WebColors.primaryLight.withValues(alpha: 0.025),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Fine procedural micro-grain
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _LuxuryNoisePainter(),
-            ),
+          const SizedBox(height: 20),
+          Container(
+            key: _skillsKey,
+            child: SkillsSection(data: data, isDark: _isDark),
           ),
         ],
-      ),
+
+        const SizedBox(height: 24),
+
+        // Row 2: Featured Projects
+        Container(
+          key: _projectsKey,
+          child: ProjectsSection(data: data, isDark: _isDark),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Row 3: Experience, Certificates, Currently Learning
+        if (isDesktop)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 4,
+                child: Container(
+                  key: _experienceKey,
+                  child: ExperienceSection(data: data, isDark: _isDark),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 4,
+                child: Container(
+                  key: _certificatesKey,
+                  child: CertificatesSection(data: data, isDark: _isDark),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 3,
+                child: CurrentlyLearningCard(data: data, isDark: _isDark),
+              ),
+            ],
+          )
+        else ...[
+          Container(
+            key: _experienceKey,
+            child: ExperienceSection(data: data, isDark: _isDark),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            key: _certificatesKey,
+            child: CertificatesSection(data: data, isDark: _isDark),
+          ),
+          const SizedBox(height: 20),
+          CurrentlyLearningCard(data: data, isDark: _isDark),
+        ],
+      ],
     );
   }
-}
 
-class _LuxuryNoisePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.015)
-      ..strokeWidth = 1.0
-      ..strokeCap = StrokeCap.round;
-
-    const step = 26.0;
-    for (double x = 0; x < size.width; x += step) {
-      for (double y = 0; y < size.height; y += step) {
-        final hash = ((x * 12.9898 + y * 78.233) % 1.0);
-        if (hash > 0.48) {
-          final offsetX = (hash * 19) % step;
-          final offsetY = (hash * 37) % step;
-          canvas.drawPoints(
-            ui.PointMode.points,
-            [Offset(x + offsetX, y + offsetY)],
-            paint,
-          );
-        }
-      }
-    }
+  Widget _buildMobileDrawer(PortfolioViewData data) {
+    return PortfolioMobileDrawer(
+      navTitles: const [
+        'Home',
+        'About',
+        'Skills',
+        'Projects',
+        'Experience',
+        'Certificates',
+        'Contact',
+      ],
+      onNavSelected: _scrollToSectionByTitle,
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

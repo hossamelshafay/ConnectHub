@@ -1,15 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/web_colors.dart';
-import '../theme/web_text_styles.dart';
-import '../theme/web_theme.dart';
 import '../models/portfolio_view_data.dart';
-import '../widgets/responsive_container.dart';
-import '../widgets/web_section_header.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/section_empty_state.dart';
-import '../animations/entrance_fader.dart';
 
-/// About Section showcasing background, bio, and engineering pillars.
+/// About Section card matching the Titanium/Beige mockup design.
 class AboutSection extends StatelessWidget {
   final PortfolioViewData data;
   final bool isDark;
@@ -22,148 +15,139 @@ class AboutSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = WebTheme.isMobile(context);
-
     final aboutText = (data.user.about != null && data.user.about!.trim().isNotEmpty)
         ? data.user.about!.trim()
         : (data.user.bio != null && data.user.bio!.trim().isNotEmpty)
             ? data.user.bio!.trim()
-            : null;
-
-    final bool isEmpty = aboutText == null;
+            : 'Passionate software engineer focused on building clean, performant applications, solving real-world problems, and crafting exceptional user experiences.';
 
     final locationText = (data.user.location != null && data.user.location!.trim().isNotEmpty)
         ? data.user.location!.trim()
-        : null;
+        : 'Available remotely';
 
-    final roleText = (data.user.headline != null && data.user.headline!.trim().isNotEmpty)
-        ? data.user.headline!.trim()
-        : null;
-
-    return ResponsiveContainer(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16.0 : 48.0,
-        vertical: isMobile ? 40.0 : 80.0,
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: isDark ? WebColors.darkSurfaceCard : WebColors.lightSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? WebColors.darkBorder : WebColors.lightBorder,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 22,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          WebSectionHeader(
-            eyebrow: 'About',
-            title: 'About',
-            subtitle: null,
-            isDark: isDark,
-          ),
-
-          if (isEmpty)
-            SectionEmptyState(
-              icon: Icons.person_outline_rounded,
-              message: 'No information provided yet.',
-              isDark: isDark,
-            )
-          else ...[
-            // Bio Summary Card
-            EntranceFader(
-              delay: const Duration(milliseconds: 200),
-              child: GlassCard(
-                backgroundColor: isDark ? WebColors.surfaceCard : WebColors.lightSurface,
-                borderColor: isDark ? WebColors.border : WebColors.lightBorder,
-                padding: EdgeInsets.all(isMobile ? 20 : 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: WebColors.accent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            'Background & Professional Journey',
-                            style: WebTextStyles.cardTitle(isDark: isDark).copyWith(fontSize: 18),
-                            softWrap: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      aboutText,
-                      style: WebTextStyles.bodyMedium(isDark: isDark).copyWith(height: 1.7),
-                      softWrap: true,
-                    ),
-                    if (locationText != null || roleText != null) ...[
-                      const SizedBox(height: 24),
-                      Wrap(
-                        spacing: 20,
-                        runSpacing: 12,
-                        children: [
-                          if (locationText != null)
-                            _buildDetailItem(
-                              Icons.location_on_outlined,
-                              'Location',
-                              locationText,
-                            ),
-                          if (roleText != null)
-                            _buildDetailItem(
-                              Icons.work_outline_rounded,
-                              'Role',
-                              roleText,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ],
+          // Header Row
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? WebColors.darkPrimary.withValues(alpha: 0.18)
+                      : const Color(0xFFF0EAE1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person_outline_rounded,
+                  size: 20,
+                  color: isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary,
                 ),
               ),
+              const SizedBox(width: 12),
+              Text(
+                'About Me',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? WebColors.darkTextPrimary : const Color(0xFF1B1917),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // About Body Text
+          Text(
+            aboutText,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              height: 1.68,
+              color: isDark ? WebColors.darkTextSecondary : const Color(0xFF4A433D),
             ),
-          ],
+          ),
+          const SizedBox(height: 22),
+
+          // Bottom Meta Chips
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              // Location Chip
+              _buildMetaChip(
+                icon: Icons.location_on_outlined,
+                text: locationText,
+              ),
+              // Open to opportunities Chip
+              _buildMetaChip(
+                icon: Icons.calendar_today_outlined,
+                text: 'Open to opportunities',
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailItem(IconData icon, String label, String value) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 16,
-          color: WebColors.accent,
+  Widget _buildMetaChip({
+    required IconData icon,
+    required String text,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark
+            ? WebColors.darkSurface.withValues(alpha: 0.7)
+            : const Color(0xFFF7F4EE),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? WebColors.darkBorder : const Color(0xFFE5DDD0),
+          width: 1,
         ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: RichText(
-            softWrap: true,
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '$label: ',
-                  style: WebTextStyles.bodySmall(isDark: isDark).copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? WebColors.textSecondary : WebColors.lightTextSecondary,
-                  ),
-                ),
-                TextSpan(
-                  text: value,
-                  style: WebTextStyles.bodySmall(isDark: isDark).copyWith(
-                    color: isDark ? WebColors.textPrimary : WebColors.lightTextPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 13.5,
+            color: isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isDark ? WebColors.darkTextPrimary : const Color(0xFF332D28),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
-

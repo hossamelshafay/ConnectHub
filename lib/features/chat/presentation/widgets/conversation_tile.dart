@@ -45,10 +45,10 @@ class ConversationTile extends StatelessWidget {
             UserAvatarById(
               userId: peerId,
               fallbackName: peerName,
-              size: 52,
+              size: 44,
               fallbackImageUrl: peerPhoto,
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
 
             // Name + preview
             Expanded(
@@ -60,9 +60,12 @@ class ConversationTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           peerName,
-                          style: AppTextStyles.body1.copyWith(
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14.5,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
+                            letterSpacing: -0.2,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -71,10 +74,12 @@ class ConversationTile extends StatelessWidget {
                       if (time.isNotEmpty)
                         Text(
                           time,
-                          style: AppTextStyles.caption.copyWith(
+                          style: TextStyle(
+                            fontFamily: 'Inter',
                             color: unread > 0
                                 ? AppColors.primary
-                                : AppColors.textHint,
+                                : AppColors.textMuted,
+                            fontSize: 11,
                             fontWeight: unread > 0
                                 ? FontWeight.w600
                                 : FontWeight.w400,
@@ -82,19 +87,21 @@ class ConversationTile extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           preview.isEmpty ? 'No messages yet' : preview,
-                          style: AppTextStyles.body2.copyWith(
+                          style: TextStyle(
+                            fontFamily: 'Inter',
                             color: unread > 0
                                 ? AppColors.textPrimary
-                                : AppColors.textHint,
+                                : AppColors.textSecondary,
                             fontWeight: unread > 0
                                 ? FontWeight.w500
                                 : FontWeight.w400,
+                            fontSize: 12.5,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -104,18 +111,27 @@ class ConversationTile extends StatelessWidget {
                         Container(
                           margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [AppColors.primary, AppColors.primaryLight],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: Text(
                             unread > 99 ? '99+' : '$unread',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              height: 1,
+                              height: 1.1,
                             ),
                           ),
                         ),
@@ -126,7 +142,7 @@ class ConversationTile extends StatelessWidget {
             ),
             if (onDelete != null)
               PopupMenuButton<String>(
-                icon: const Icon(
+                icon: Icon(
                   Icons.more_vert_rounded,
                   color: AppColors.textHint,
                   size: 20,

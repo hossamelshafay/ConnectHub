@@ -23,14 +23,14 @@ class EditPreviewBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
-        border: const Border(
+        border: Border(
           top: BorderSide(color: AppColors.divider, width: 1),
           left: BorderSide(color: AppColors.accent, width: 3),
         ),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.edit_rounded,
             size: 18,
             color: AppColors.accent,

@@ -234,7 +234,12 @@ class PortfolioImportFirestoreService {
 
     final socialLinks = <String, dynamic>{};
     if (portfolio.github.trim().isNotEmpty) {
-      socialLinks['github'] = portfolio.github.trim();
+      final gh = portfolio.github.trim();
+      socialLinks['github'] = gh;
+      final cleanGh = gh.replaceAll(RegExp(r'^https?://(www\.)?github\.com/'), '').replaceAll('@', '').split('/')[0].trim();
+      if (cleanGh.isNotEmpty) {
+        payload['githubUsername'] = cleanGh;
+      }
     }
     if (portfolio.linkedin.trim().isNotEmpty) {
       socialLinks['linkedin'] = portfolio.linkedin.trim();

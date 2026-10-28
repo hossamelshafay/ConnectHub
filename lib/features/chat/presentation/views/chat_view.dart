@@ -1,8 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/chat/data/models/message_model.dart';
@@ -10,14 +8,14 @@ import 'package:connecthub/features/chat/data/repos/chat_repo_imp.dart';
 import 'package:connecthub/features/chat/presentation/manager/cubit/chat_cubit.dart';
 import 'package:connecthub/features/chat/presentation/manager/cubit/chat_state.dart';
 import 'package:connecthub/features/chat/presentation/widgets/chat_input_bar.dart';
-import 'package:connecthub/features/chat/presentation/widgets/forward_message_sheet.dart';
-import 'package:connecthub/features/chat/presentation/widgets/message_bubble.dart';
+
 import 'package:connecthub/features/chat/presentation/widgets/reply_preview_bar.dart';
 import 'package:connecthub/features/chat/presentation/widgets/edit_preview_bar.dart';
 import 'package:connecthub/features/chat/presentation/widgets/delete_message_dialog.dart';
 import 'package:connecthub/features/chat/presentation/widgets/delete_conversation_dialog.dart';
-import 'package:connecthub/features/chat/presentation/widgets/typing_indicator.dart';
-import 'package:connecthub/core/utils/profile_navigation_helper.dart';
+import 'package:connecthub/features/chat/presentation/widgets/chat_app_bar_title.dart';
+import 'package:connecthub/features/chat/presentation/widgets/chat_message_list.dart';
+import 'package:connecthub/features/chat/presentation/widgets/chat_themed_background.dart';
 
 /// The main chat screen for a single conversation.
 class ChatView extends StatefulWidget {
@@ -106,8 +104,7 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
-    _isNearBottom =
-        pos.pixels >= pos.maxScrollExtent - 120;
+    _isNearBottom = pos.pixels >= pos.maxScrollExtent - 120;
   }
 
   void _scrollToBottom({bool animated = true}) {
@@ -306,7 +303,7 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver {
             onPressed: () => Navigator.pop(context),
             padding: EdgeInsets.zero,
           ),
-          title: _AppBarTitle(
+          title: ChatAppBarTitle(
             peerId: widget.peerId,
             peerName: widget.peerName,
             peerPhoto: widget.peerPhoto,
@@ -343,354 +340,103 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver {
             ),
           ],
         ),
-        body: Column(
-          children: [
-            // Messages
-            Expanded(
-              child: BlocConsumer<ChatCubit, ChatState>(
-                listener: (context, state) {
-                  if (state is ChatLoaded && _isNearBottom) {
-                    _scrollToBottom();
-                  }
-                },
-                builder: (context, state) {
-                  if (state is ChatLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary),
-                    );
-                  }
-
-                  if (state is ChatError) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.error_outline,
-                              size: 48, color: AppColors.textHint),
-                          const SizedBox(height: 12),
-                          Text(state.message,
-                              style: AppTextStyles.body2,
-                              textAlign: TextAlign.center),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (state is ChatLoaded) {
-                    return _MessageList(
-                      messages: state.messages,
-                      myUid: _myUid,
-                      peerId: widget.peerId,
-                      peerName: widget.peerName,
-                      peerPhoto: widget.peerPhoto,
-                      scrollController: _scrollController,
-                      messageKeys: _messageKeys,
-                      conversationId: widget.conversationId,
-                      cubit: _cubit,
-                      onReply: (msg) => setState(() => _replyTarget = msg),
-                      onEdit: _startEdit,
-                      onDelete: _confirmDeleteMessage,
-                      onScrollToMessage: _scrollToMessage,
-                      myName: _myName,
-                      myUid2: _myUid,
-                    );
-                  }
-
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
-
-            // Preview bar (editing or replying)
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _editingMessage != null
-                  ? EditPreviewBar(
-                      key: const ValueKey('edit_preview'),
-                      originalText: _editingMessage!.text,
-                      onCancel: _cancelEdit,
-                    )
-                  : (_replyTarget != null
-                      ? ReplyPreviewBar(
-                          key: const ValueKey('reply_preview'),
-                          senderName: _replyTarget!.senderId == _myUid
-                              ? 'yourself'
-                              : widget.peerName,
-                          messageText: _replyTarget!.text,
-                          onCancel: () => setState(() => _replyTarget = null),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('no_preview'))),
-            ),
-
-            // Input bar
-            BlocBuilder<ChatCubit, ChatState>(
-              builder: (context, state) {
-                final isSending =
-                    state is ChatLoaded ? state.isSending : false;
-                return ChatInputBar(
-                  controller: _inputController,
-                  focusNode: _inputFocusNode,
-                  isSending: isSending,
-                  onSend: _send,
-                  onChanged: (text) {
-                    _cubit.onTypingChanged(text.isNotEmpty);
-                    setState(() {});
+        body: ChatThemedBackground(
+          child: Column(
+            children: [
+              // Messages
+              Expanded(
+                child: BlocConsumer<ChatCubit, ChatState>(
+                  listener: (context, state) {
+                    if (state is ChatLoaded && _isNearBottom) {
+                      _scrollToBottom();
+                    }
                   },
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                  builder: (context, state) {
+                    if (state is ChatLoading) {
+                      return const ChatMessageShimmer(count: 7);
+                    }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// App bar title with presence
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AppBarTitle extends StatelessWidget {
-  final String peerId;
-  final String peerName;
-  final String? peerPhoto;
-  final Stream<Map<String, dynamic>> presenceStream;
-
-  const _AppBarTitle({
-    required this.peerId,
-    required this.peerName,
-    this.peerPhoto,
-    required this.presenceStream,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => ProfileNavigationHelper.openUserProfile(
-        context,
-        userId: peerId,
-        userName: peerName,
-      ),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Row(
-          children: [
-            UserAvatarById(
-              userId: peerId,
-              fallbackName: peerName,
-              size: 38,
-              fallbackImageUrl: peerPhoto,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: StreamBuilder<Map<String, dynamic>>(
-                stream: presenceStream,
-                builder: (context, snap) {
-                  final data = snap.data ?? {};
-                  final isOnline = data['isOnline'] as bool? ?? false;
-                  final lastSeenTs = data['lastSeen'];
-                  String subtitle;
-                  if (isOnline) {
-                    subtitle = 'Online';
-                  } else if (lastSeenTs != null) {
-                    final dt = lastSeenTs is Timestamp
-                        ? lastSeenTs.toDate()
-                        : DateTime.now();
-                    subtitle = 'Last seen ${_formatLastSeen(dt)}';
-                  } else {
-                    subtitle = '';
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        peerName,
-                        style: AppTextStyles.body1.copyWith(
-                            fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (subtitle.isNotEmpty)
-                        Row(
+                    if (state is ChatError) {
+                      return Center(
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (isOnline)
-                              Container(
-                                width: 7,
-                                height: 7,
-                                margin: const EdgeInsets.only(right: 4),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            Text(
-                              subtitle,
-                              style: AppTextStyles.caption.copyWith(
-                                color: isOnline
-                                    ? AppColors.success
-                                    : AppColors.textHint,
-                              ),
-                            ),
+                            Icon(Icons.error_outline,
+                                size: 48, color: AppColors.textHint),
+                            const SizedBox(height: 12),
+                            Text(state.message,
+                                style: AppTextStyles.body2,
+                                textAlign: TextAlign.center),
                           ],
                         ),
-                    ],
+                      );
+                    }
+
+                    if (state is ChatLoaded) {
+                      return ChatMessageList(
+                        messages: state.messages,
+                        myUid: _myUid,
+                        myName: _myName,
+                        peerId: widget.peerId,
+                        peerName: widget.peerName,
+                        peerPhoto: widget.peerPhoto,
+                        scrollController: _scrollController,
+                        messageKeys: _messageKeys,
+                        conversationId: widget.conversationId,
+                        cubit: _cubit,
+                        onReply: (msg) => setState(() => _replyTarget = msg),
+                        onEdit: _startEdit,
+                        onDelete: _confirmDeleteMessage,
+                        onScrollToMessage: _scrollToMessage,
+                      );
+                    }
+
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+
+              // Preview bar (editing or replying)
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _editingMessage != null
+                    ? EditPreviewBar(
+                        key: const ValueKey('edit_preview'),
+                        originalText: _editingMessage!.text,
+                        onCancel: _cancelEdit,
+                      )
+                    : (_replyTarget != null
+                        ? ReplyPreviewBar(
+                            key: const ValueKey('reply_preview'),
+                            senderName: _replyTarget!.senderId == _myUid
+                                ? 'yourself'
+                                : widget.peerName,
+                            messageText: _replyTarget!.text,
+                            onCancel: () => setState(() => _replyTarget = null),
+                          )
+                        : const SizedBox.shrink(key: ValueKey('no_preview'))),
+              ),
+
+              // Input bar
+              BlocBuilder<ChatCubit, ChatState>(
+                builder: (context, state) {
+                  final isSending =
+                      state is ChatLoaded ? state.isSending : false;
+                  return ChatInputBar(
+                    controller: _inputController,
+                    focusNode: _inputFocusNode,
+                    isSending: isSending,
+                    onSend: _send,
+                    onChanged: (text) {
+                      _cubit.onTypingChanged(text.isNotEmpty);
+                      setState(() {});
+                    },
                   );
                 },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  String _formatLastSeen(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return DateFormat('MMM d').format(dt);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Messages list
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MessageList extends StatelessWidget {
-  final List<MessageModel> messages;
-  final String myUid;
-  final String myUid2;
-  final String peerId;
-  final String peerName;
-  final String? peerPhoto;
-  final String myName;
-  final ScrollController scrollController;
-  final Map<String, GlobalKey> messageKeys;
-  final String conversationId;
-  final ChatCubit cubit;
-  final void Function(MessageModel) onReply;
-  final void Function(MessageModel) onEdit;
-  final void Function(MessageModel) onDelete;
-  final void Function(String messageId) onScrollToMessage;
-
-  const _MessageList({
-    required this.messages,
-    required this.myUid,
-    required this.myUid2,
-    required this.peerId,
-    required this.peerName,
-    required this.peerPhoto,
-    required this.myName,
-    required this.scrollController,
-    required this.messageKeys,
-    required this.conversationId,
-    required this.cubit,
-    required this.onReply,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onScrollToMessage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.waving_hand_rounded,
-                size: 56,
-                color: AppColors.textHint.withValues(alpha: 0.4)),
-            const SizedBox(height: 12),
-            Text('Say hello!',
-                style: AppTextStyles.body2
-                    .copyWith(color: AppColors.textHint)),
-          ],
-        ),
-      );
-    }
-
-    // Find the last outgoing message for seen indicator.
-    int lastOutgoingIndex = -1;
-    for (int i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].senderId == myUid) {
-        lastOutgoingIndex = i;
-        break;
-      }
-    }
-
-    // Typing indicator stream from conversation doc.
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('conversations')
-          .doc(conversationId)
-          .snapshots(),
-      builder: (context, convSnap) {
-        bool isPeerTyping = false;
-        if (convSnap.hasData && convSnap.data!.exists) {
-          final data =
-              convSnap.data!.data() as Map<String, dynamic>? ?? {};
-          final typingUsers =
-              data['typingUsers'] as Map<String, dynamic>? ?? {};
-          isPeerTyping = typingUsers[peerId] as bool? ?? false;
-        }
-
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
-          itemCount: messages.length + (isPeerTyping ? 1 : 0),
-          itemBuilder: (context, index) {
-            // Typing indicator at the end
-            if (isPeerTyping && index == messages.length) {
-              return const TypingIndicator();
-            }
-
-            final msg = messages[index];
-            final isMe = msg.senderId == myUid;
-            final isLastOutgoing = index == lastOutgoingIndex;
-            final isSeen = msg.seenBy.contains(peerId);
-
-            // Register GlobalKey for scroll-to-reply.
-            messageKeys.putIfAbsent(msg.id, () => GlobalKey());
-
-            return KeyedSubtree(
-              key: messageKeys[msg.id],
-              child: MessageBubble(
-                message: msg,
-                isMe: isMe,
-                showSeenIndicator: isMe && isLastOutgoing,
-                isLastSeen: isLastOutgoing && isSeen,
-                onReply: () => onReply(msg),
-                onForward: () => _showForwardSheet(context, msg),
-                onEdit: isMe && !msg.isDeleted ? () => onEdit(msg) : null,
-                onDelete: () => onDelete(msg),
-                onTapReply: msg.replyToId != null
-                    ? () => onScrollToMessage(msg.replyToId!)
-                    : null,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showForwardSheet(BuildContext context, MessageModel msg) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => ForwardMessageSheet(
-        message: msg,
-        myUid: myUid2,
-        myName: myName,
       ),
     );
   }

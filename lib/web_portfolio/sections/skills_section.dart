@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/web_colors.dart';
-import '../theme/web_text_styles.dart';
-import '../theme/web_theme.dart';
 import '../models/portfolio_view_data.dart';
-import '../widgets/responsive_container.dart';
-import '../widgets/web_section_header.dart';
-import '../widgets/tech_badge.dart';
-import '../widgets/section_empty_state.dart';
-import '../animations/animated_progress_bar.dart';
-import '../animations/entrance_fader.dart';
-import '../responsive/responsive.dart';
 
-/// Skills Section featuring animated proficiency bars and categorized skill cards.
+/// Skills Section card matching the Titanium/Beige mockup design.
 class SkillsSection extends StatelessWidget {
   final PortfolioViewData data;
   final bool isDark;
@@ -24,175 +15,222 @@ class SkillsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = WebTheme.isMobile(context);
-
-    // Group skills by category
-    final Map<String, List<SkillItem>> categorizedSkills = {};
-    for (var skill in data.skills) {
-      categorizedSkills.putIfAbsent(skill.category, () => []).add(skill);
-    }
-
-    // Dynamically derive tools & tech ecosystem from Firestore data
-    final Set<String> gatheredTools = {};
-    for (final p in data.projects) {
-      gatheredTools.addAll(p.technologies);
-    }
-    for (final e in data.experiences) {
-      gatheredTools.addAll(e.skills);
+    // Dynamically gather skills from Firestore data
+    final Set<String> gatheredSkills = {};
+    for (final s in data.skills) {
+      gatheredSkills.add(s.name);
     }
     for (final s in data.user.skills) {
-      gatheredTools.add(s);
+      gatheredSkills.add(s);
     }
-    final toolsAndTech = gatheredTools.toList();
+    for (final p in data.projects) {
+      gatheredSkills.addAll(p.technologies);
+    }
+    for (final e in data.experiences) {
+      gatheredSkills.addAll(e.skills);
+    }
 
-    final bool isEmpty = data.skills.isEmpty && toolsAndTech.isEmpty;
+    final skillsList = gatheredSkills.isNotEmpty
+        ? gatheredSkills.toList()
+        : ['Flutter', 'Dart', 'Firebase', 'REST APIs', 'Git', 'Clean Architecture', 'UI/UX', 'State Management'];
 
-    return ResponsiveContainer(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16.0 : 48.0,
-        vertical: isMobile ? 40.0 : 80.0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          WebSectionHeader(
-            eyebrow: 'Skills',
-            title: 'Skills',
-            subtitle: null,
-            isDark: isDark,
-          ),
-
-          if (isEmpty)
-            SectionEmptyState(
-              icon: Icons.psychology_outlined,
-              message: 'No skills added yet.',
-              isDark: isDark,
-            )
-          else ...[
-            // Categories: Adaptive Grid
-            if (categorizedSkills.isNotEmpty)
-            ResponsiveGrid(
-              maxCrossAxisExtent: 340,
-              crossAxisSpacing: 20,
-              mainAxisSpacing: 20,
-              children: categorizedSkills.entries.map((entry) {
-                return _buildSkillCategoryCard(entry.key, entry.value);
-              }).toList(),
-            ),
-
-          if (toolsAndTech.isNotEmpty) ...[
-            const SizedBox(height: 36),
-
-            // Tools & Ecosystem
-            EntranceFader(
-              delay: const Duration(milliseconds: 250),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(isMobile ? 20 : 28),
-                decoration: BoxDecoration(
-                  color: isDark ? WebColors.surfaceCard : WebColors.lightSurface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark ? WebColors.border : WebColors.lightBorder,
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: WebColors.accent.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.layers_rounded,
-                            color: WebColors.accent,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            'Tools, Libraries & Engineering Ecosystem',
-                            style: WebTextStyles.cardTitle(isDark: isDark).copyWith(fontSize: 17),
-                            softWrap: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: toolsAndTech.map((tool) {
-                        return TechBadge(label: tool, isDark: isDark);
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ],
-    ),
-  );
-}
-
-  Widget _buildSkillCategoryCard(String categoryName, List<SkillItem> skills) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: isDark ? WebColors.surfaceCard : WebColors.lightSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? WebColors.darkSurfaceCard : WebColors.lightSurface,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? WebColors.border : WebColors.lightBorder,
+          color: isDark ? WebColors.darkBorder : WebColors.lightBorder,
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 22,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Row(
             children: [
               Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: WebColors.primaryLight,
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? WebColors.darkPrimary.withValues(alpha: 0.18)
+                      : const Color(0xFFF0EAE1),
                   shape: BoxShape.circle,
                 ),
+                child: Icon(
+                  Icons.code_rounded,
+                  size: 20,
+                  color: isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary,
+                ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  categoryName,
-                  style: WebTextStyles.cardTitle(isDark: isDark).copyWith(fontSize: 17),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              const SizedBox(width: 12),
+              Text(
+                'Skills',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? WebColors.darkTextPrimary : const Color(0xFF1B1917),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          ...skills.asMap().entries.map((entry) {
-            final index = entry.key;
-            final skill = entry.value;
-            return Padding(
-              padding: EdgeInsets.only(bottom: index < skills.length - 1 ? 20 : 0),
-              child: AnimatedProgressBar(
-                label: skill.name,
-                percentage: skill.level,
-                delay: Duration(milliseconds: 100 * index),
-                isDark: isDark,
-              ),
-            );
-          }),
+          const SizedBox(height: 18),
+
+          // Skill Chips Wrap
+          Wrap(
+            spacing: 8,
+            runSpacing: 9,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ...skillsList.take(13).map((skill) {
+                return _SkillPill(
+                  label: skill,
+                  isDark: isDark,
+                );
+              }),
+              if (skillsList.length > 13)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0x332B2520)
+                        : const Color(0xFFEDE7DD),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? WebColors.darkBorder : const Color(0xFFDCD4C6),
+                    ),
+                  ),
+                  child: Text(
+                    '+ More',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? WebColors.darkTextSecondary : const Color(0xFF5A524A),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SkillPill extends StatefulWidget {
+  final String label;
+  final bool isDark;
+
+  const _SkillPill({
+    required this.label,
+    required this.isDark,
+  });
+
+  @override
+  State<_SkillPill> createState() => _SkillPillState();
+}
+
+class _SkillPillState extends State<_SkillPill> {
+  bool _hovered = false;
+
+  IconData _getSkillIcon(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('flutter')) return Icons.flutter_dash;
+    if (lower.contains('dart')) return Icons.arrow_outward_rounded;
+    if (lower.contains('firebase')) return Icons.local_fire_department_rounded;
+    if (lower.contains('api') || lower.contains('rest')) return Icons.sync_alt_rounded;
+    if (lower.contains('git')) return Icons.commit_rounded;
+    if (lower.contains('clean') || lower.contains('arch')) return Icons.verified_user_outlined;
+    if (lower.contains('ui') || lower.contains('ux') || lower.contains('design')) return Icons.brush_rounded;
+    if (lower.contains('state') || lower.contains('bloc') || lower.contains('provider')) return Icons.account_tree_outlined;
+    if (lower.contains('python')) return Icons.terminal_rounded;
+    if (lower.contains('docker')) return Icons.inventory_2_outlined;
+    if (lower.contains('postgres') || lower.contains('database') || lower.contains('sql')) return Icons.storage_rounded;
+    if (lower.contains('ai') || lower.contains('machine')) return Icons.psychology_outlined;
+    return Icons.code_rounded;
+  }
+
+  Color _getSkillColor(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('flutter')) return const Color(0xFF02569B);
+    if (lower.contains('dart')) return const Color(0xFF0175C2);
+    if (lower.contains('firebase')) return const Color(0xFFFFA000);
+    if (lower.contains('api') || lower.contains('rest')) return const Color(0xFF009688);
+    if (lower.contains('git')) return const Color(0xFFF05032);
+    if (lower.contains('clean') || lower.contains('arch')) return const Color(0xFF2563EB);
+    if (lower.contains('ui') || lower.contains('ux')) return const Color(0xFF8B5CF6);
+    if (lower.contains('state') || lower.contains('bloc')) return const Color(0xFF0284C7);
+    if (lower.contains('python')) return const Color(0xFF3776AB);
+    if (lower.contains('docker')) return const Color(0xFF2496ED);
+    if (lower.contains('postgres') || lower.contains('sql')) return const Color(0xFF336791);
+    if (lower.contains('ai') || lower.contains('machine')) return const Color(0xFF7C3AED);
+    return widget.isDark ? WebColors.darkPrimaryLight : WebColors.lightPrimary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final iconColor = _getSkillColor(widget.label);
+    final icon = _getSkillIcon(widget.label);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
+        decoration: BoxDecoration(
+          color: widget.isDark
+              ? (_hovered ? WebColors.darkSurfaceElevated : WebColors.darkSurface)
+              : (_hovered ? const Color(0xFFEFE9DF) : const Color(0xFFF6F2EB)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _hovered
+                ? (widget.isDark ? WebColors.darkPrimary : WebColors.lightPrimary)
+                : (widget.isDark ? WebColors.darkBorder : const Color(0xFFE8E2D7)),
+            width: 1,
+          ),
+          boxShadow: _hovered
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: widget.isDark ? 0.2 : 0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 13.5,
+              color: iconColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              widget.label,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: widget.isDark ? WebColors.darkTextPrimary : const Color(0xFF2C2723),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

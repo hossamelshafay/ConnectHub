@@ -50,11 +50,17 @@ class ChatRepoImp implements ChatRepo {
     required String myUid,
     required String myName,
     required String? myPhoto,
-    required String otherUid,
-    required String otherName,
-    required String? otherPhoto,
+    String? otherUid,
+    String? otherName,
+    String? otherPhoto,
+    String? peerId,
+    String? peerName,
+    String? peerPhoto,
   }) async {
-    final convId = _conversationId(myUid, otherUid);
+    final effectiveOtherUid = otherUid ?? peerId!;
+    final effectiveOtherName = otherName ?? peerName ?? 'User';
+    final effectiveOtherPhoto = otherPhoto ?? peerPhoto;
+    final convId = _conversationId(myUid, effectiveOtherUid);
     final docRef = _conversations.doc(convId);
     final snapshot = await docRef.get();
 
@@ -62,17 +68,17 @@ class ChatRepoImp implements ChatRepo {
       return convId;
     }
 
-    final participants = [myUid, otherUid]..sort();
+    final participants = [myUid, effectiveOtherUid]..sort();
     await docRef.set({
       'participants': participants,
-      'participantNames': {myUid: myName, otherUid: otherName},
-      'participantPhotos': {myUid: myPhoto, otherUid: otherPhoto},
+      'participantNames': {myUid: myName, effectiveOtherUid: effectiveOtherName},
+      'participantPhotos': {myUid: myPhoto, effectiveOtherUid: effectiveOtherPhoto},
       'lastMessage': '',
       'lastMessageAt': FieldValue.serverTimestamp(),
       'lastMessageSenderId': '',
       'lastMessageType': 'text',
-      'unreadCount': {myUid: 0, otherUid: 0},
-      'typingUsers': {myUid: false, otherUid: false},
+      'unreadCount': {myUid: 0, effectiveOtherUid: 0},
+      'typingUsers': {myUid: false, effectiveOtherUid: false},
       'createdAt': FieldValue.serverTimestamp(),
     });
 

@@ -16,6 +16,7 @@ class PortfolioLoaded extends PortfolioState {
   final List<ExperienceModel> experience;
   final List<EducationModel> education;
   final List<CertificateModel> certificates;
+  final String experienceYears;
 
   PortfolioLoaded({
     required this.user,
@@ -23,7 +24,8 @@ class PortfolioLoaded extends PortfolioState {
     this.experience = const [],
     this.education = const [],
     this.certificates = const [],
-  });
+    String? experienceYears,
+  }) : experienceYears = experienceYears ?? calculateExperienceYears(experience);
 
   PortfolioLoaded copyWith({
     UserModel? user,
@@ -32,13 +34,41 @@ class PortfolioLoaded extends PortfolioState {
     List<EducationModel>? education,
     List<CertificateModel>? certificates,
   }) {
+    final updatedExp = experience ?? this.experience;
     return PortfolioLoaded(
       user: user ?? this.user,
       projects: projects ?? this.projects,
-      experience: experience ?? this.experience,
+      experience: updatedExp,
       education: education ?? this.education,
       certificates: certificates ?? this.certificates,
+      experienceYears: experience != null
+          ? calculateExperienceYears(updatedExp)
+          : experienceYears,
     );
+  }
+
+  static String calculateExperienceYears(List<ExperienceModel> exps) {
+    if (exps.isEmpty) return '0';
+    int totalMonths = 0;
+    final now = DateTime.now();
+    for (final e in exps) {
+      if (e.startDate != null) {
+        final end =
+            (e.isCurrent || e.endDate == null) ? now : (e.endDate ?? now);
+        final diff = end.difference(e.startDate!);
+        if (diff.inDays > 0) {
+          totalMonths += (diff.inDays / 30.44).round();
+        }
+      }
+    }
+    if (totalMonths <= 0) {
+      return exps.length.toString();
+    }
+    final years = totalMonths / 12;
+    if (years < 1) return '<1';
+    return years >= 10
+        ? '${years.round()}+'
+        : years.toStringAsFixed(years % 1 == 0 ? 0 : 1);
   }
 }
 

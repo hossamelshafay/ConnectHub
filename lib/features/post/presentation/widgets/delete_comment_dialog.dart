@@ -24,7 +24,7 @@ class DeleteCommentDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
+      title: Text(
         'Delete Comment?',
         style: TextStyle(
           color: AppColors.textPrimary,
@@ -32,14 +32,14 @@ class DeleteCommentDialog extends StatelessWidget {
           fontSize: 18,
         ),
       ),
-      content: const Text(
+      content: Text(
         'This action cannot be undone.',
         style: AppTextStyles.body2,
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(
+          child: Text(
             'Cancel',
             style: TextStyle(color: AppColors.textSecondary),
           ),

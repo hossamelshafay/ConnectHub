@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_cubit.dart';
 import 'package:connecthub/features/follow/presentation/manager/cubit/follow_state.dart';
 
-/// Stateless follow/unfollow button that reads [FollowCubit] from context.
-/// Must be placed within a widget tree that provides [FollowCubit].
 class FollowButton extends StatelessWidget {
   const FollowButton({super.key});
 
@@ -16,12 +15,12 @@ class FollowButton extends StatelessWidget {
         if (state is FollowInitial) return const SizedBox.shrink();
 
         if (state is FollowLoading) {
-          return const SizedBox(
+          return SizedBox(
             width: 24,
             height: 24,
             child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: Colors.white,
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           );
         }
@@ -30,11 +29,13 @@ class FollowButton extends StatelessWidget {
           return _FollowButtonContent(
             isFollowing: state.isFollowing,
             isActionLoading: state.isActionLoading,
-            onTap: () => context.read<FollowCubit>().toggleFollow(),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              context.read<FollowCubit>().toggleFollow();
+            },
           );
         }
 
-        // FollowError: show a neutral retry affordance
         if (state is FollowError) {
           return _FollowButtonContent(
             isFollowing: false,
@@ -65,37 +66,60 @@ class _FollowButtonContent extends StatelessWidget {
     return GestureDetector(
       onTap: isActionLoading ? null : onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 11),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
         decoration: BoxDecoration(
-          gradient: isFollowing
-              ? null
-              : const LinearGradient(
-                  colors: [Colors.white24, Colors.white10],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          color: isFollowing ? Colors.white : null,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white, width: 1.5),
+          color: isFollowing ? AppColors.glass : AppColors.primary,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: isFollowing
+                ? AppColors.glassBorder
+                : AppColors.primary,
+            width: 1,
+          ),
+          boxShadow: [
+            if (!isFollowing)
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                blurRadius: 4,
+                offset: const Offset(0, 1.5),
+              ),
+          ],
         ),
         child: isActionLoading
-            ? const SizedBox(
-                width: 16,
-                height: 16,
+            ? SizedBox(
+                width: 15,
+                height: 15,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColors.primary,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isFollowing ? AppColors.textPrimary : Colors.white,
+                  ),
                 ),
               )
-            : Text(
-                isFollowing ? 'Following' : 'Follow',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isFollowing ? AppColors.primary : Colors.white,
-                  letterSpacing: 0.3,
-                ),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isFollowing) ...[
+                    Icon(
+                      Icons.check_rounded,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 5),
+                  ],
+                  Text(
+                    isFollowing ? 'Following' : 'Follow',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isFollowing
+                          ? AppColors.textPrimary
+                          : Colors.white,
+                    ),
+                  ),
+                ],
               ),
       ),
     );

@@ -37,7 +37,10 @@ class AuthRepoImp implements AuthRepo {
         .replaceAll(RegExp(r'[^a-z0-9_-]'), '-')
         .replaceAll(RegExp(r'-+'), '-')
         .replaceAll(RegExp(r'^-|-$'), '');
-    final initialSlug = slugBase.isNotEmpty ? slugBase : 'user';
+    final shortUid = credential.user!.uid.length >= 6
+        ? credential.user!.uid.substring(0, 6).toLowerCase()
+        : credential.user!.uid.toLowerCase();
+    final initialSlug = slugBase.isNotEmpty ? slugBase : 'user-$shortUid';
 
     // Save user data to Firestore
     await _firestore.collection('users').doc(credential.user!.uid).set({
@@ -266,8 +269,10 @@ class AuthRepoImp implements AuthRepo {
         if ((data['username'] as String?)?.isNotEmpty == true) {
           username = data['username'] as String;
         }
-        if ((data['profileImage'] as String?)?.isNotEmpty == true) {
-          profileImage = data['profileImage'] as String;
+        if (data.containsKey('profileImage')) {
+          profileImage = data['profileImage'] as String? ?? '';
+        } else if ((user.photoURL ?? '').isNotEmpty) {
+          profileImage = user.photoURL!;
         }
         if ((data['email'] as String?)?.isNotEmpty == true) {
           email = data['email'] as String;

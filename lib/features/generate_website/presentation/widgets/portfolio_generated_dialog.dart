@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'portfolio_generated_actions.dart';
 
 class PortfolioGeneratedDialog extends StatefulWidget {
   final String publicUrl;
@@ -134,14 +135,9 @@ class _PortfolioGeneratedDialogState extends State<PortfolioGeneratedDialog>
             ),
             boxShadow: [
               BoxShadow(
-                color: goldPrimary.withValues(alpha: 0.15),
-                blurRadius: 36,
-                spreadRadius: 2,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.7),
-                blurRadius: 28,
-                offset: const Offset(0, 14),
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -160,9 +156,9 @@ class _PortfolioGeneratedDialogState extends State<PortfolioGeneratedDialog>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: goldPrimary.withValues(alpha: 0.4),
-                      blurRadius: 18,
-                      spreadRadius: 2,
+                      color: goldPrimary.withValues(alpha: 0.18),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -236,139 +232,13 @@ class _PortfolioGeneratedDialogState extends State<PortfolioGeneratedDialog>
               ),
               const SizedBox(height: 24),
 
-              // Preview button (Full-width gold gradient)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 4,
-                    shadowColor: goldPrimary.withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: Colors.transparent,
-                  ).copyWith(
-                    backgroundBuilder: (context, states, child) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [goldLight, goldPrimary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: child,
-                      );
-                    },
-                  ),
-                  onPressed: _openWebsite,
-                  icon: const Icon(
-                    Icons.open_in_new_rounded,
-                    size: 18,
-                    color: Color(0xFF090909),
-                  ),
-                  label: const Text(
-                    'Preview',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF090909),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Row with Copy Link and Share buttons
-              Row(
-                children: [
-                  // Copy Link button
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: goldLight,
-                        side: BorderSide(
-                          color: _copied
-                              ? const Color(0xFF10B981)
-                              : goldPrimary.withValues(alpha: 0.5),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        backgroundColor: _copied
-                            ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                            : cardBg,
-                      ),
-                      onPressed: _copyToClipboard,
-                      icon: Icon(
-                        _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
-                        size: 17,
-                        color: _copied ? const Color(0xFF10B981) : goldLight,
-                      ),
-                      label: Text(
-                        _copied ? 'Copied!' : 'Copy Link',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: _copied ? const Color(0xFF10B981) : Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Share button
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: goldLight,
-                        side: BorderSide(
-                          color: goldPrimary.withValues(alpha: 0.5),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        backgroundColor: cardBg,
-                      ),
-                      onPressed: _shareWebsite,
-                      icon: const Icon(
-                        Icons.share_rounded,
-                        size: 17,
-                        color: goldLight,
-                      ),
-                      label: const Text(
-                        'Share',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Close button
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFA7A7A7),
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-                ),
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text(
-                  'Close',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              // Action Buttons
+              PortfolioGeneratedActions(
+                onPreview: _openWebsite,
+                onCopy: _copyToClipboard,
+                onShare: _shareWebsite,
+                onClose: () => Navigator.of(context).pop(),
+                isCopied: _copied,
               ),
             ],
           ),

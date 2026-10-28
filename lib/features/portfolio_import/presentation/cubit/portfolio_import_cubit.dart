@@ -13,7 +13,7 @@ class PortfolioImportCubit extends Cubit<PortfolioImportState> {
       : _repo = repo ?? PortfolioImportRepoImp(),
         super(const PortfolioImportInitial());
 
-  static const int _maxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
+  static const int _maxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
 
   /// Opens the OS file picker, validates selection, emits [PortfolioImportFileSelected].
   Future<void> pickFile() async {
@@ -40,7 +40,7 @@ class PortfolioImportCubit extends Cubit<PortfolioImportState> {
       if (size > _maxFileSizeBytes) {
         final mb = (size / 1024 / 1024).toStringAsFixed(1);
         emit(PortfolioImportError(
-            'File is too large ($mb MB). Maximum allowed size is 5 MB.'));
+            'File is too large ($mb MB). Maximum allowed size is 10 MB.'));
         return;
       }
 
@@ -93,7 +93,7 @@ class PortfolioImportCubit extends Cubit<PortfolioImportState> {
         return PortfolioImportError('Invalid CV file: ${e.message}');
       case 413:
         return const PortfolioImportError(
-            'The CV file exceeds the maximum 5 MB limit. Please select a smaller PDF.');
+            'The CV file exceeds the maximum 10 MB limit. Please select a smaller PDF.');
       case 422:
         return PortfolioImportError('CV document format unreadable: ${e.message}');
       case 502:

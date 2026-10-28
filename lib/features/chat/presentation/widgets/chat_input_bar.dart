@@ -21,16 +21,12 @@ class ChatInputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: AppColors.surface.withValues(alpha: 0.85),
+        border: Border(
+          top: BorderSide(color: AppColors.glassBorder, width: 0.8),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -41,27 +37,34 @@ class ChatInputBar extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(24),
+                  color: AppColors.background.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.glassBorder, width: 0.8),
                 ),
                 child: TextField(
                   controller: controller,
                   focusNode: focusNode,
                   minLines: 1,
-                  maxLines: 6,
+                  maxLines: 5,
                   textCapitalization: TextCapitalization.sentences,
-                  style: AppTextStyles.body1,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
                   onChanged: onChanged,
                   decoration: InputDecoration(
                     hintText: 'Message…',
-                    hintStyle:
-                        AppTextStyles.body2.copyWith(color: AppColors.textHint),
+                    hintStyle: AppTextStyles.body2.copyWith(
+                      color: AppColors.textHint,
+                      fontSize: 13.5,
+                    ),
                     filled: false,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 12),
+                        horizontal: 16, vertical: 10),
                   ),
                 ),
               ),
@@ -70,43 +73,54 @@ class ChatInputBar extends StatelessWidget {
 
             // Send button
             AnimatedScale(
-              scale: controller.text.trim().isEmpty || isSending ? 0.85 : 1.0,
+              scale: controller.text.trim().isEmpty || isSending ? 0.88 : 1.0,
               duration: const Duration(milliseconds: 150),
               child: GestureDetector(
                 onTap: (controller.text.trim().isEmpty || isSending)
                     ? null
                     : onSend,
                 child: Container(
-                  width: 46,
-                  height: 46,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     gradient: (controller.text.trim().isEmpty || isSending)
                         ? LinearGradient(
                             colors: [
-                              AppColors.textHint.withValues(alpha: 0.3),
-                              AppColors.textHint.withValues(alpha: 0.3),
+                              AppColors.surfaceVariant,
+                              AppColors.surfaceVariant,
                             ],
                           )
-                        : const LinearGradient(
-                            colors: [AppColors.primary, AppColors.primaryDark],
+                        : LinearGradient(
+                            colors: [AppColors.primary, AppColors.primaryLight],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                     shape: BoxShape.circle,
+                    boxShadow: (controller.text.trim().isEmpty || isSending)
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                   ),
                   child: isSending
                       ? const Padding(
-                          padding: EdgeInsets.all(13),
+                          padding: EdgeInsets.all(11),
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor:
                                 AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
-                          size: 20,
+                      : Icon(
+                          Icons.arrow_upward_rounded,
+                          color: (controller.text.trim().isEmpty || isSending)
+                              ? AppColors.textHint
+                              : Colors.white,
+                          size: 19,
                         ),
                 ),
               ),

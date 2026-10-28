@@ -21,9 +21,9 @@ class LikedBySheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.65,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
@@ -48,8 +48,8 @@ class LikedBySheet extends StatelessWidget {
           Text('${userIds.length} people', style: AppTextStyles.caption),
           const SizedBox(height: 16),
           if (userIds.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
+            Padding(
+              padding: const EdgeInsets.all(32),
               child: Text('No likes yet.', style: AppTextStyles.body2),
             )
           else

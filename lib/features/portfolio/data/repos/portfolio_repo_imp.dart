@@ -49,6 +49,7 @@ class PortfolioRepoImp implements PortfolioRepo {
     String? about,
     String? location,
     String? phone,
+    String? cvLink,
     SocialLinksModel? socialLinks,
     String? githubUsername,
     String? profileSlug,
@@ -63,6 +64,11 @@ class PortfolioRepoImp implements PortfolioRepo {
     if (about != null) data['about'] = about.trim();
     if (location != null) data['location'] = location.trim();
     if (phone != null) data['phone'] = phone.trim();
+    if (cvLink != null) {
+      final trimmed = cvLink.trim();
+      data['cvLink'] = trimmed;
+      data['resumeUrl'] = trimmed;
+    }
 
     if (socialLinks != null) {
       data['socialLinks'] = socialLinks.toMap();

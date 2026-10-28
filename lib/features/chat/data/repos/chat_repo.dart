@@ -14,9 +14,12 @@ abstract class ChatRepo {
     required String myUid,
     required String myName,
     required String? myPhoto,
-    required String otherUid,
-    required String otherName,
-    required String? otherPhoto,
+    String? otherUid,
+    String? otherName,
+    String? otherPhoto,
+    String? peerId,
+    String? peerName,
+    String? peerPhoto,
   });
 
   // ── Messages ─────────────────────────────────────────────────────────────────

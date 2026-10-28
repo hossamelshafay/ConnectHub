@@ -132,10 +132,13 @@ class SettingsSection extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.glassBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
+                color: AppColors.isDark
+                    ? Colors.black.withValues(alpha: 0.12)
+                    : const Color(0x06000000),
+                blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -158,7 +161,7 @@ class SettingsSection extends StatelessWidget {
       result.add(items[i]);
       if (i < items.length - 1) {
         result.add(
-          const Divider(
+          Divider(
             height: 1,
             thickness: 1,
             indent: 70,

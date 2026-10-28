@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connecthub/features/home/data/models/post_model.dart';
+import 'package:connecthub/features/profile/data/models/user_model.dart';
 
 abstract class ProfileState {}
 
@@ -44,6 +45,21 @@ class ProfileLoaded extends ProfileState {
 
   String get bio => (userData?['bio'] as String?)?.trim() ?? '';
 
+  String get headline => (userData?['headline'] as String?)?.trim() ?? '';
+
+  String get location => (userData?['location'] as String?)?.trim() ?? '';
+
+  String get cvLink =>
+      (userData?['cvLink'] as String?)?.trim() ??
+      (userData?['resumeUrl'] as String?)?.trim() ??
+      '';
+
+  SocialLinksModel get socialLinks {
+    final raw = userData?['socialLinks'] as Map<String, dynamic>?;
+    if (raw != null) return SocialLinksModel.fromMap(raw);
+    return SocialLinksModel.fromMap(userData);
+  }
+
   String get email {
     final dbEmail = (userData?['email'] as String?)?.trim();
     if (dbEmail != null && dbEmail.isNotEmpty) return dbEmail;
@@ -52,8 +68,14 @@ class ProfileLoaded extends ProfileState {
     return '';
   }
 
-  String? get profileImage =>
-      (userData?['profileImage'] as String?) ?? user.photoURL;
+  String? get profileImage {
+    if (userData != null && userData!.containsKey('profileImage')) {
+      final img = userData!['profileImage'] as String?;
+      return (img != null && img.trim().isNotEmpty) ? img.trim() : null;
+    }
+    final authPhoto = user.photoURL?.trim();
+    return (authPhoto != null && authPhoto.isNotEmpty) ? authPhoto : null;
+  }
 
   DateTime get joinedDate {
     final ts = userData?['createdAt'] as Timestamp?;

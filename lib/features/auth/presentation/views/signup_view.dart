@@ -4,8 +4,12 @@ import 'package:connecthub/core/utils/app_theme.dart';
 import 'package:connecthub/core/utils/app_widgets.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_cubit.dart';
 import 'package:connecthub/features/auth/presentation/manager/cubit/auth_state.dart';
+import 'package:connecthub/features/auth/presentation/widgets/auth_step_indicator.dart';
+import 'package:connecthub/features/auth/presentation/widgets/password_strength_bar.dart';
 import 'package:connecthub/features/home/presentation/views/home_view.dart';
 import 'package:connecthub/features/auth/presentation/views/account_type_selection_view.dart';
+
+typedef SignupView = SignUpView;
 
 class SignUpView extends StatefulWidget {
   const SignUpView({super.key});
@@ -23,25 +27,45 @@ class _SignUpViewState extends State<SignUpView>
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  late AnimationController _animController;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
+  late final AnimationController _animController;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+
+  int _passwordStrength = 0; // 0: none, 1: weak, 2: medium, 3: strong
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
     );
     _fadeAnim = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeOut),
     );
-    _slideAnim =
-        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
     );
     _animController.forward();
+
+    _passwordController.addListener(_evalPassword);
+    _confirmPasswordController.addListener(() => setState(() {}));
+  }
+
+  void _evalPassword() {
+    final pwd = _passwordController.text;
+    int score = 0;
+    if (pwd.length >= 6) score++;
+    if (pwd.length >= 8 && RegExp(r'[0-9]').hasMatch(pwd)) score++;
+    if (pwd.length >= 10 && RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(pwd)) {
+      score++;
+    }
+    setState(() {
+      _passwordStrength = score;
+    });
   }
 
   @override
@@ -56,6 +80,9 @@ class _SignUpViewState extends State<SignUpView>
 
   @override
   Widget build(BuildContext context) {
+    final bool passwordsMatch = _confirmPasswordController.text.isNotEmpty &&
+        _confirmPasswordController.text == _passwordController.text;
+
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
@@ -67,19 +94,23 @@ class _SignUpViewState extends State<SignUpView>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.surfaceVariant,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: AppColors.error, width: 1),
+              ),
             ),
           );
         }
       },
       child: Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: FadeTransition(
+        backgroundColor: AppColors.background,
+        body: DarkGlassBackground(
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: FadeTransition(
               opacity: _fadeAnim,
               child: SlideTransition(
                 position: _slideAnim,
@@ -88,25 +119,23 @@ class _SignUpViewState extends State<SignUpView>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 40),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(14),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          AppIconButton(
+                            icon: Icons.arrow_back_ios_new,
+                            size: 18,
+                            onPressed: () => Navigator.pop(context),
                           ),
-                          child: const Icon(Icons.arrow_back_ios_new,
-                              size: 18, color: AppColors.textPrimary),
-                        ),
+                          const AuthStepIndicator(currentStep: 1, totalSteps: 3),
+                        ],
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 28),
                       Text('Create Account', style: AppTextStyles.headline1),
                       const SizedBox(height: 8),
                       Text(
-                        'Join ConnectHub and start sharing',
+                        'Join ConnectHub and elevate your professional network',
                         style: AppTextStyles.body2,
                       ),
                       const SizedBox(height: 32),
@@ -149,9 +178,10 @@ class _SignUpViewState extends State<SignUpView>
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
                             color: AppColors.textHint,
+                            size: 20,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
                         ),
                         validator: (val) {
                           if (val == null || val.isEmpty) {
@@ -163,22 +193,36 @@ class _SignUpViewState extends State<SignUpView>
                           return null;
                         },
                       ),
+
+                      // Password strength bar
+                      if (_passwordController.text.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        PasswordStrengthBar(strength: _passwordStrength),
+                      ],
+
                       const SizedBox(height: 16),
                       CustomTextField(
                         controller: _confirmPasswordController,
                         hintText: 'Confirm password',
                         prefixIcon: Icons.lock_outline,
                         obscureText: _obscureConfirm,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscureConfirm
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: AppColors.textHint,
-                          ),
-                          onPressed: () =>
-                              setState(() => _obscureConfirm = !_obscureConfirm),
-                        ),
+                        suffixIcon: passwordsMatch
+                            ? const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.success,
+                                size: 20,
+                              )
+                            : IconButton(
+                                icon: Icon(
+                                  _obscureConfirm
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: AppColors.textHint,
+                                  size: 20,
+                                ),
+                                onPressed: () => setState(
+                                    () => _obscureConfirm = !_obscureConfirm),
+                              ),
                         validator: (val) {
                           if (val != _passwordController.text) {
                             return 'Passwords do not match';
@@ -193,12 +237,27 @@ class _SignUpViewState extends State<SignUpView>
                           if (_formKey.currentState!.validate()) {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) => AccountTypeSelectionView(
+                              PageRouteBuilder(
+                                pageBuilder: (_, _, _) =>
+                                    AccountTypeSelectionView(
                                   name: _nameController.text.trim(),
                                   email: _emailController.text.trim(),
                                   password: _passwordController.text,
                                 ),
+                                transitionDuration:
+                                    const Duration(milliseconds: 300),
+                                transitionsBuilder: (_, anim, _, child) {
+                                  return SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(1, 0),
+                                      end: Offset.zero,
+                                    ).animate(CurvedAnimation(
+                                      parent: anim,
+                                      curve: Curves.easeOutCubic,
+                                    )),
+                                    child: child,
+                                  );
+                                },
                               ),
                             );
                           }
@@ -231,6 +290,7 @@ class _SignUpViewState extends State<SignUpView>
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

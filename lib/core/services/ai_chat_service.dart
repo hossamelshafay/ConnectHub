@@ -1,8 +1,13 @@
 import 'package:dio/dio.dart';
 
 class AIChatService {
+  static const String _baseUrl = String.fromEnvironment(
+    'AI_CHAT_BASE_URL',
+    defaultValue: 'https://YOUR_N8N_INSTANCE.app.n8n.cloud',
+  );
+
   static final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://hossamelshafay1.app.n8n.cloud',
+    baseUrl: _baseUrl,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 60),
     headers: {'Content-Type': 'application/json'},
@@ -10,6 +15,10 @@ class AIChatService {
 
   /// Sends a message to the AI chatbot and returns the response.
   static Future<String> sendMessage(String message) async {
+    if (_baseUrl.isEmpty || _baseUrl.contains('YOUR_N8N_INSTANCE')) {
+      return 'AI Chat is currently not configured. Please set AI_CHAT_BASE_URL.';
+    }
+
     try {
       final response = await _dio.post(
         '/webhook/chat',

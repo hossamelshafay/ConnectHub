@@ -70,26 +70,30 @@ The AI pipeline enforces a **zero-hallucination policy** — Gemini output is cr
   <table>
     <tr>
       <td align="center" style="padding: 16px;">
-        <p><strong>🏠 Social Feed</strong></p>
+        <p><strong> Social Feed</strong></p>
         <img src="assets/screenshots/feed.jpg" width="230" alt="Social Feed"/>
       </td>
       <td align="center" style="padding: 16px;">
-        <p><strong>🤖 AI Chatbot</strong></p>
+        <p><strong> AI Chatbot</strong></p>
         <img src="assets/screenshots/chat-bot.jpg" width="230" alt="AI Chatbot"/>
       </td>
       <td align="center" style="padding: 16px;">
-        <p><strong>📄 AI CV Analyzer</strong></p>
+        <p><strong> AI CV Analyzer</strong></p>
         <img src="assets/screenshots/upload-cv.jpg" width="230" alt="AI CV Analyzer"/>
       </td>
     </tr>
     <tr>
       <td align="center" style="padding: 16px;">
-        <p><strong>💬 Real-time Chat</strong></p>
+        <p><strong> Real-time Chat</strong></p>
         <img src="assets/screenshots/users-chat.jpg" width="230" alt="Real-time Chat"/>
       </td>
       <td align="center" style="padding: 16px;">
-        <p><strong>👤 User Profile</strong></p>
+        <p><strong> User Profile</strong></p>
         <img src="assets/screenshots/profile.jpg" width="230" alt="User Profile"/>
+              </td>
+      <td align="center" style="padding: 16px;">
+        <p><strong> Post </strong></p>
+        <img src="assets/screenshots/post.jpg" width="230" alt="post"/>
       </td>
       <td align="center" style="padding: 16px;"></td>
     </tr>

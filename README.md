@@ -95,7 +95,6 @@ The AI pipeline enforces a **zero-hallucination policy** — Gemini output is cr
         <p><strong> Post </strong></p>
         <img src="assets/screenshots/post.jpg" width="230" alt="post"/>
       </td>
-      <td align="center" style="padding: 16px;"></td>
     </tr>
   </table>
 </div>

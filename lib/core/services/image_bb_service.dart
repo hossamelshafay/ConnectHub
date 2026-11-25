@@ -13,7 +13,10 @@ class ImageUploadResult {
 }
 
 class ImageBBService {
-  static const String _apiKey = '7ac2d4c14cffe9030a779e50c13c84b3';
+  static const String _apiKey = String.fromEnvironment(
+    'IMGBB_API_KEY',
+    defaultValue: 'YOUR_IMGBB_API_KEY',
+  );
   static const String _uploadUrl = 'https://api.imgbb.com/1/upload';
 
   static final Dio _dio = Dio(
@@ -26,6 +29,12 @@ class ImageBBService {
 
   /// Uploads a base64 image file to ImageBB and returns detailed result including delete hash / delete url.
   static Future<ImageUploadResult?> uploadImageDetailed(String base64Image) async {
+    if (_apiKey.isEmpty || _apiKey == 'YOUR_IMGBB_API_KEY') {
+      // ignore: avoid_print
+      print('[ImageBBService] Warning: IMGBB_API_KEY is not configured.');
+      return null;
+    }
+
     try {
       final formData = FormData.fromMap({
         'key': _apiKey,

@@ -43,4 +43,22 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Firebase sensitive configuration & local cache
+lib/firebase_options.dart
+**/google-services.json
+**/GoogleService-Info.plist
+*service-account*.json
+*serviceAccountKey*.json
+*-firebase-adminsdk-*.json
 tool/service-account.json
+.firebase/
+
+# Environment variables and secrets
+.env
+.env.*
+*.env
+*.env.*
+dart_defines.json
+.env.json
+!.env.example
+!*.env.example

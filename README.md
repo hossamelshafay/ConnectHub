@@ -527,13 +527,14 @@ cd ConnectHub
 # 2. Install Flutter dependencies
 flutter pub get
 
-# 3. Ensure Firebase config files are present:
-#    lib/firebase_options.dart
-#    android/app/google-services.json
+# 3. Generate/restore Firebase config files locally (excluded from Git):
+#    flutterfire configure
+#    (Generates lib/firebase_options.dart, android/app/google-services.json,
+#     and ios/Runner/GoogleService-Info.plist)
 
-# 4. Run the application
-flutter run                  # Mobile (Android / iOS / Windows)
-flutter run -d chrome        # Web (Portfolio SPA preview)
+# 4. Run the application with required environment variables
+flutter run --dart-define=IMGBB_API_KEY=your_imgbb_api_key --dart-define=AI_CHAT_BASE_URL=your_n8n_instance_url
+flutter run -d chrome --dart-define=IMGBB_API_KEY=your_imgbb_api_key --dart-define=AI_CHAT_BASE_URL=your_n8n_instance_url
 ```
 
 ---
